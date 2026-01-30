@@ -465,12 +465,12 @@
                             </div>
                         `;
 
-                        // Dibujar figuras
+                        // Dibujar figuras usando figuraElemento.js
                         setTimeout(() => {
                             elementos.forEach((el, idx) => {
                                 const containerId = `figura-elemento-${etiquetaId}-${idx}`;
-                                if (el.dimensiones) {
-                                    dibujarFiguraSVG(containerId, el.dimensiones, el.peso, el.diametro, el.barras);
+                                if (el.dimensiones && window.dibujarFiguraElemento) {
+                                    window.dibujarFiguraElemento(containerId, el.dimensiones, el.peso, el.diametro, el.barras);
                                 }
                             });
                         }, 50);
@@ -478,135 +478,6 @@
                     } catch (error) {
                         content.innerHTML = `<p class="text-red-500 text-center py-4">Error: ${error.message}</p>`;
                     }
-                }
-
-                // Función simple para dibujar SVG de una figura
-                function dibujarFiguraSVG(containerId, dimensionesStr, peso, diametro, barras) {
-                    const contenedor = document.getElementById(containerId);
-                    if (!contenedor) return;
-
-                    const ancho = contenedor.offsetWidth || 500;
-                    const alto = contenedor.offsetHeight || 120;
-
-                    // Parsear dimensiones
-                    const tokens = (dimensionesStr || '').split(/\s+/).filter(Boolean);
-                    const dims = [];
-                    for (let i = 0; i < tokens.length; i++) {
-                        const t = tokens[i];
-                        if (t.endsWith('r')) {
-                            const radius = parseFloat(t.slice(0, -1));
-                            let arcAngle = 360;
-                            if (i + 1 < tokens.length && tokens[i + 1].endsWith('d')) {
-                                arcAngle = parseFloat(tokens[++i].slice(0, -1));
-                            }
-                            dims.push({ type: 'arc', radius, arcAngle });
-                        } else if (t.endsWith('d')) {
-                            dims.push({ type: 'turn', angle: parseFloat(t.slice(0, -1)) });
-                        } else {
-                            dims.push({ type: 'line', length: parseFloat(t) });
-                        }
-                    }
-
-                    if (dims.length === 0) {
-                        contenedor.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">Sin forma definida</p>';
-                        return;
-                    }
-
-                    // Calcular puntos del path
-                    let pts = [], x = 0, y = 0, ang = 0;
-                    pts.push({ x, y });
-                    for (const d of dims) {
-                        if (d.type === 'line') {
-                            x += d.length * Math.cos(ang * Math.PI / 180);
-                            y += d.length * Math.sin(ang * Math.PI / 180);
-                            pts.push({ x, y });
-                        } else if (d.type === 'turn') {
-                            ang += d.angle;
-                        } else if (d.type === 'arc') {
-                            const cx = x + d.radius * Math.cos((ang + 90) * Math.PI / 180);
-                            const cy = y + d.radius * Math.sin((ang + 90) * Math.PI / 180);
-                            const start = Math.atan2(y - cy, x - cx);
-                            const end = start + d.arcAngle * Math.PI / 180;
-                            x = cx + d.radius * Math.cos(end);
-                            y = cy + d.radius * Math.sin(end);
-                            ang += d.arcAngle;
-                            pts.push({ x, y });
-                        }
-                    }
-
-                    // Calcular bounding box
-                    let minX = pts[0].x, maxX = pts[0].x, minY = pts[0].y, maxY = pts[0].y;
-                    for (const p of pts) {
-                        minX = Math.min(minX, p.x);
-                        maxX = Math.max(maxX, p.x);
-                        minY = Math.min(minY, p.y);
-                        maxY = Math.max(maxY, p.y);
-                    }
-
-                    const figW = maxX - minX || 1;
-                    const figH = maxY - minY || 1;
-                    const midX = (minX + maxX) / 2;
-                    const midY = (minY + maxY) / 2;
-
-                    // Escalar para que quepa
-                    const margin = 20;
-                    const scale = Math.min((ancho - margin * 2) / figW, (alto - margin * 2) / figH);
-                    const centerX = ancho / 2;
-                    const centerY = alto / 2;
-
-                    // Construir path SVG
-                    let pathD = '';
-                    x = 0; y = 0; ang = 0;
-                    let started = false;
-                    for (const d of dims) {
-                        if (d.type === 'line') {
-                            const nx = x + d.length * Math.cos(ang * Math.PI / 180);
-                            const ny = y + d.length * Math.sin(ang * Math.PI / 180);
-                            const sx = centerX + (x - midX) * scale;
-                            const sy = centerY + (y - midY) * scale;
-                            const ex = centerX + (nx - midX) * scale;
-                            const ey = centerY + (ny - midY) * scale;
-                            if (!started) {
-                                pathD += `M ${sx} ${sy}`;
-                                started = true;
-                            }
-                            pathD += ` L ${ex} ${ey}`;
-                            x = nx; y = ny;
-                        } else if (d.type === 'turn') {
-                            ang += d.angle;
-                        } else if (d.type === 'arc') {
-                            const cx0 = x + d.radius * Math.cos((ang + 90) * Math.PI / 180);
-                            const cy0 = y + d.radius * Math.sin((ang + 90) * Math.PI / 180);
-                            const start = Math.atan2(y - cy0, x - cx0);
-                            const end = start + d.arcAngle * Math.PI / 180;
-                            const nx = cx0 + d.radius * Math.cos(end);
-                            const ny = cy0 + d.radius * Math.sin(end);
-                            if (!started) {
-                                const sx = centerX + (x - midX) * scale;
-                                const sy = centerY + (y - midY) * scale;
-                                pathD += `M ${sx} ${sy}`;
-                                started = true;
-                            }
-                            const ex = centerX + (nx - midX) * scale;
-                            const ey = centerY + (ny - midY) * scale;
-                            const r = d.radius * scale;
-                            const largeArc = Math.abs(d.arcAngle) > 180 ? 1 : 0;
-                            const sweep = d.arcAngle >= 0 ? 1 : 0;
-                            pathD += ` A ${r} ${r} 0 ${largeArc} ${sweep} ${ex} ${ey}`;
-                            x = nx; y = ny;
-                            ang += d.arcAngle;
-                        }
-                    }
-
-                    // Crear SVG
-                    const svgHtml = `
-                        <svg viewBox="0 0 ${ancho} ${alto}" style="width:100%;height:100%;">
-                            <rect x="0" y="0" width="${ancho}" height="${alto}" fill="#f9f9f9"/>
-                            <path d="${pathD}" stroke="#333" stroke-width="2" fill="none"/>
-                            <text x="10" y="15" font-size="11" fill="#666">Ø${diametro || '?'} x${barras || 0}</text>
-                        </svg>
-                    `;
-                    contenedor.innerHTML = svgHtml;
                 }
 
 
@@ -622,7 +493,7 @@
                     modal.classList.remove('flex');
                 }
             </script>
-            <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" defer></script>
+            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
             <script>
                 // Función para imprimir desde el modal
                 function imprimirEtiquetaModal() {
