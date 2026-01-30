@@ -14,6 +14,7 @@
             }
         })();
     </script>
+
     <style>
         /* Color inicial oscuro para evitar flash blanco */
         html:not(.light) body {
