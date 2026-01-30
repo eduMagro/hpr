@@ -86,6 +86,44 @@ class Elemento extends Model
     }
 
     /**
+     * Genera múltiples códigos de elemento de una vez (optimizado para bulk insert).
+     *
+     * @param int $cantidad Número de códigos a generar
+     * @return array Array de códigos únicos
+     */
+    public static function generarCodigosBulk(int $cantidad): array
+    {
+        if ($cantidad <= 0) {
+            return [];
+        }
+
+        return DB::transaction(function () use ($cantidad) {
+            $prefijo = 'EL' . now()->format('ym'); // EL2512
+
+            // Obtener el número mayor ya usado después del prefijo
+            $ultimo = self::where('codigo', 'like', "$prefijo%")
+                ->lockForUpdate()
+                ->orderByDesc(DB::raw("CAST(SUBSTRING(codigo, LENGTH('$prefijo') + 1) AS UNSIGNED)"))
+                ->value('codigo');
+
+            $siguiente = 1;
+
+            if ($ultimo) {
+                $numero = (int)substr($ultimo, strlen($prefijo));
+                $siguiente = $numero + 1;
+            }
+
+            // Generar todos los códigos
+            $codigos = [];
+            for ($i = 0; $i < $cantidad; $i++) {
+                $codigos[] = $prefijo . ($siguiente + $i);
+            }
+
+            return $codigos;
+        });
+    }
+
+    /**
      * Indica si el modelo debe gestionar las marcas de tiempo.
      *
      * @var bool

@@ -342,7 +342,7 @@ class FerrawinBulkImportService
     }
 
     /**
-     * Crea elementos para una planilla (mismo sistema que importación manual).
+     * Crea elementos para una planilla (OPTIMIZADO con bulk insert).
      *
      * @param Planilla $planilla
      * @param array $elementos
@@ -371,7 +371,6 @@ class FerrawinBulkImportService
             // Asignar número de grupo si es nueva combinación
             if (!isset($grupoNum[$claveGrupo])) {
                 $grupoNum[$claveGrupo] = $siguiente++;
-                Log::channel('ferrawin_sync')->debug("   📌 Grupo {$grupoNum[$claveGrupo]} = '{$descripcion}' + '{$marca}'");
             }
 
             $numEtiqueta = $grupoNum[$claveGrupo];
@@ -382,27 +381,112 @@ class FerrawinBulkImportService
             $porEtiqueta[$numEtiqueta][] = $elem;
         }
 
-        Log::channel('ferrawin_sync')->info("📦 [BULK] Planilla {$planilla->codigo}: " . count($porEtiqueta) . " grupos de etiquetas (por descripción+marca)");
+        Log::channel('ferrawin_sync')->info("📦 [BULK] Planilla {$planilla->codigo}: " . count($porEtiqueta) . " grupos, " . count($elementos) . " elementos");
 
-        // Crear etiquetas y elementos (igual que PlanillaProcessor)
+        // Generar todos los códigos de elementos de una vez
+        $codigosElementos = Elemento::generarCodigosBulk(count($elementos));
+        $codigoIndex = 0;
+        $now = now();
+
+        // Crear etiquetas y preparar elementos para bulk insert
         foreach ($porEtiqueta as $numEtiqueta => $filasEtiqueta) {
-            // Crear etiqueta padre con retry logic (igual que importación manual)
+            // Crear etiqueta padre con retry logic
             $etiquetaPadre = $this->crearEtiquetaPadreConRetry($planilla, $filasEtiqueta, $numEtiqueta);
 
             if (!$etiquetaPadre) {
                 Log::channel('ferrawin_sync')->error("❌ [BULK] No se pudo crear etiqueta para grupo {$numEtiqueta}");
+                $codigoIndex += count($filasEtiqueta); // Saltar códigos
                 continue;
             }
 
             $this->stats['etiquetas_creadas']++;
 
-            // Crear elementos uno por uno (igual que importación manual)
+            // Preparar elementos para bulk insert
+            $elementosInsert = [];
             foreach ($filasEtiqueta as $elem) {
-                $this->crearElemento($planilla, $etiquetaPadre, $elem, $mapaEntidades);
+                $elementosInsert[] = $this->prepararElementoParaInsert(
+                    $planilla,
+                    $etiquetaPadre,
+                    $elem,
+                    $mapaEntidades,
+                    $codigosElementos[$codigoIndex++],
+                    $now
+                );
             }
 
-            Log::channel('ferrawin_sync')->debug("   ✅ Etiqueta {$etiquetaPadre->codigo} con " . count($filasEtiqueta) . " elementos");
+            // Bulk insert de elementos de esta etiqueta
+            if (!empty($elementosInsert)) {
+                Elemento::insert($elementosInsert);
+                $this->stats['elementos_creados'] += count($elementosInsert);
+            }
         }
+    }
+
+    /**
+     * Prepara los datos de un elemento para bulk insert.
+     */
+    protected function prepararElementoParaInsert(
+        Planilla $planilla,
+        Etiqueta $etiquetaPadre,
+        array $elem,
+        array $mapaEntidades,
+        string $codigo,
+        $now
+    ): array {
+        $doblesBarra = (int)($elem['dobles_barra'] ?? 0);
+        $barras = (int)($elem['barras'] ?? 0);
+        $longitud = (float)($elem['longitud'] ?? 0);
+        $diametro = (int)($elem['diametro'] ?? 0);
+
+        // Buscar planilla_entidad_id usando la fila del elemento
+        $planillaEntidadId = null;
+        $fila = isset($elem['fila']) ? trim($elem['fila']) : null;
+        if ($fila === '' || $fila === null) {
+            $fila = null;
+        }
+
+        if ($fila !== null && !empty($mapaEntidades)) {
+            $filaNormalizada = ltrim((string)$fila, '0');
+            if (empty($filaNormalizada)) {
+                $filaNormalizada = '0';
+            }
+            $planillaEntidadId = $mapaEntidades[$filaNormalizada] ?? null;
+        }
+
+        // Determinar si requiere elaboración
+        $elaborado = $this->determinarElaborado($doblesBarra, $diametro, $longitud);
+
+        // Truncar campos de texto
+        $figura = isset($elem['figura']) ? mb_substr($elem['figura'], 0, 50) : null;
+        $descripcionFila = isset($elem['descripcion_fila']) ? mb_substr($elem['descripcion_fila'], 0, 500) : null;
+        $marca = isset($elem['marca']) ? mb_substr($elem['marca'], 0, 255) : null;
+        $etiquetaVal = isset($elem['etiqueta']) ? mb_substr($elem['etiqueta'], 0, 50) : null;
+        $ferrawinId = isset($elem['ferrawin_id']) ? mb_substr($elem['ferrawin_id'], 0, 50) : null;
+
+        return [
+            'codigo' => $codigo,
+            'planilla_id' => $planilla->id,
+            'ferrawin_id' => $ferrawinId,
+            'planilla_entidad_id' => $planillaEntidadId,
+            'etiqueta_id' => $etiquetaPadre->id,
+            'etiqueta_sub_id' => null,
+            'maquina_id' => null,
+            'figura' => $figura,
+            'descripcion_fila' => $descripcionFila,
+            'fila' => $fila,
+            'marca' => $marca,
+            'etiqueta' => $etiquetaVal,
+            'diametro' => $diametro,
+            'longitud' => $longitud,
+            'barras' => $barras,
+            'dobles_barra' => $doblesBarra,
+            'peso' => (float)($elem['peso'] ?? 0),
+            'dimensiones' => $elem['dimensiones'] ?? null,
+            'tiempo_fabricacion' => $this->calcularTiempo($barras, $doblesBarra),
+            'elaborado' => $elaborado,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
     }
 
     /**

@@ -13,19 +13,71 @@ class EtiquetaEnsamblajeService
     /**
      * Genera etiquetas de ensamblaje para todas las entidades de una planilla.
      * Crea una etiqueta por cada unidad de cada entidad.
+     * OPTIMIZADO: Usa bulk insert para mejor rendimiento.
      */
     public function generarParaPlanilla(Planilla $planilla): Collection
     {
-        $etiquetasCreadas = collect();
+        $now = now();
+        $etiquetasInsert = [];
 
-        DB::transaction(function () use ($planilla, &$etiquetasCreadas) {
-            foreach ($planilla->entidades as $entidad) {
-                $etiquetas = $this->generarParaEntidad($entidad);
-                $etiquetasCreadas = $etiquetasCreadas->merge($etiquetas);
+        // Cargar entidades con conteo de etiquetas existentes
+        $entidades = $planilla->entidades()
+            ->withCount('etiquetasEnsamblaje')
+            ->get();
+
+        foreach ($entidades as $entidad) {
+            $cantidad = $entidad->cantidad ?? 1;
+            $etiquetasExistentes = $entidad->etiquetas_ensamblaje_count ?? 0;
+
+            if ($etiquetasExistentes >= $cantidad) {
+                continue; // Ya tiene todas las etiquetas
             }
-        });
 
-        return $etiquetasCreadas;
+            // Preparar datos para bulk insert
+            $marca = $entidad->marca ? mb_substr($entidad->marca, 0, 50) : null;
+            $situacion = $entidad->situacion ? mb_substr($entidad->situacion, 0, 100) : null;
+            $pesoUnitario = $entidad->peso_total ? ($entidad->peso_total / $cantidad) : null;
+
+            for ($i = $etiquetasExistentes + 1; $i <= $cantidad; $i++) {
+                $etiquetasInsert[] = [
+                    'codigo' => $this->generarCodigoRapido($entidad, $i, $cantidad),
+                    'planilla_id' => $entidad->planilla_id,
+                    'planilla_entidad_id' => $entidad->id,
+                    'numero_unidad' => $i,
+                    'total_unidades' => $cantidad,
+                    'estado' => EtiquetaEnsamblaje::ESTADO_PENDIENTE,
+                    'marca' => $marca,
+                    'situacion' => $situacion,
+                    'longitud' => $entidad->longitud_ensamblaje,
+                    'peso' => $pesoUnitario,
+                    'impresa' => false,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        // Bulk insert en chunks de 100 para evitar límites de MySQL
+        if (!empty($etiquetasInsert)) {
+            foreach (array_chunk($etiquetasInsert, 100) as $chunk) {
+                EtiquetaEnsamblaje::insert($chunk);
+            }
+        }
+
+        // Retornar las etiquetas creadas
+        return $planilla->etiquetasEnsamblaje()->get();
+    }
+
+    /**
+     * Genera código de etiqueta de forma rápida (sin cargar modelo completo).
+     */
+    protected function generarCodigoRapido(PlanillaEntidad $entidad, int $numeroUnidad, int $totalUnidades): string
+    {
+        $marca = strtoupper($entidad->marca ?? 'SM');
+        $marca = preg_replace('/\s+/', '', $marca);
+        $marca = substr($marca, 0, 20);
+
+        return sprintf('ENS-%s-%d-%d/%d', $marca, $entidad->id, $numeroUnidad, $totalUnidades);
     }
 
     /**
@@ -45,17 +97,42 @@ class EtiquetaEnsamblajeService
             return $entidad->etiquetasEnsamblaje;
         }
 
-        // Generar las etiquetas faltantes
+        // Preparar datos para bulk insert
+        $now = now();
+        $marca = $entidad->marca ? mb_substr($entidad->marca, 0, 50) : null;
+        $situacion = $entidad->situacion ? mb_substr($entidad->situacion, 0, 100) : null;
+        $pesoUnitario = $entidad->peso_total ? ($entidad->peso_total / $cantidad) : null;
+        $etiquetasInsert = [];
+
         for ($i = $etiquetasExistentes + 1; $i <= $cantidad; $i++) {
-            $etiqueta = $this->crearEtiqueta($entidad, $i, $cantidad);
-            $etiquetasCreadas->push($etiqueta);
+            $etiquetasInsert[] = [
+                'codigo' => $this->generarCodigoRapido($entidad, $i, $cantidad),
+                'planilla_id' => $entidad->planilla_id,
+                'planilla_entidad_id' => $entidad->id,
+                'numero_unidad' => $i,
+                'total_unidades' => $cantidad,
+                'estado' => EtiquetaEnsamblaje::ESTADO_PENDIENTE,
+                'marca' => $marca,
+                'situacion' => $situacion,
+                'longitud' => $entidad->longitud_ensamblaje,
+                'peso' => $pesoUnitario,
+                'impresa' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
 
-        return $etiquetasCreadas;
+        // Bulk insert
+        if (!empty($etiquetasInsert)) {
+            EtiquetaEnsamblaje::insert($etiquetasInsert);
+        }
+
+        return $entidad->etiquetasEnsamblaje()->get();
     }
 
     /**
      * Crea una etiqueta individual para una unidad específica de una entidad.
+     * @deprecated Usar generarParaEntidad con bulk insert
      */
     protected function crearEtiqueta(PlanillaEntidad $entidad, int $numeroUnidad, int $totalUnidades): EtiquetaEnsamblaje
     {
