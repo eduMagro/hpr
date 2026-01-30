@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Mi Perfil</x-slot>
 
-    <x-page-header
-        title="Mi Perfil"
-        subtitle="Ficha personal y registro de asistencia"
-        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>'
-    />
-
     {{-- Botones de fichaje: disponibles para todos los roles --}}
     <div class="container mx-auto px-4 pb-4">
         <div class="flex justify-center items-center gap-4">
