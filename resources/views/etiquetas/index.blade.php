@@ -405,6 +405,7 @@
                     </div>
                 </div>
             </div>
+            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
             <script>
                 window.etiquetaModalActual = null;
 
@@ -493,7 +494,6 @@
                     modal.classList.remove('flex');
                 }
             </script>
-            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
             <script>
                 // Función para imprimir desde el modal
                 function imprimirEtiquetaModal() {
