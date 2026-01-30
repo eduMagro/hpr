@@ -292,35 +292,43 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
         const svg = contenedor.querySelector('svg');
         const figuraImg = await convertirSVGaImagen(svg);
 
-        // Clonar y limpiar contenido
-        const clone = contenedor.cloneNode(true);
-        clone.classList.add('etiqueta-print');
-        clone.querySelectorAll('.no-print').forEach(el => el.remove());
+        // Extraer información del contenedor
+        const h2 = contenedor.querySelector('h2');
+        const h3 = contenedor.querySelector('h3');
+        const headerText = h2 ? h2.innerText : '';
+        const subHeaderText = h3 ? h3.innerText : '';
 
-        // Reemplazar SVG con imagen
-        if (figuraImg) {
-            // Eliminar todos los SVGs y canvas
-            clone.querySelectorAll('svg').forEach(el => el.remove());
-            clone.querySelectorAll('canvas').forEach(el => el.remove());
+        // Crear estructura HTML limpia para impresión
+        const etiquetaDiv = document.createElement('div');
+        etiquetaDiv.className = 'etiqueta-print';
 
-            // Eliminar contenedores de figuras (ambos formatos)
-            clone.querySelectorAll('[id^="contenedor-svg-"]').forEach(el => el.remove());
-            clone.querySelectorAll('[id^="figura-elemento-"]').forEach(el => el.remove());
-            clone.querySelectorAll('.elemento-figura').forEach(el => el.remove());
-
-            const img = new Image();
-            img.src = figuraImg;
-            img.className = 'figura-print';
-
-            // Añadir imagen directamente al contenedor principal
-            clone.appendChild(img);
+        // Header
+        if (headerText) {
+            const h2El = document.createElement('h2');
+            h2El.textContent = headerText;
+            etiquetaDiv.appendChild(h2El);
         }
 
-        // Generar y añadir QR
-        const qrBox = await generarQRConLabel(rawId, modo === 'a4' ? 50 : 60);
-        clone.insertBefore(qrBox, clone.firstChild);
+        // Subheader
+        if (subHeaderText) {
+            const h3El = document.createElement('h3');
+            h3El.textContent = subHeaderText;
+            etiquetaDiv.appendChild(h3El);
+        }
 
-        etiquetasHtml.push(clone.outerHTML);
+        // Imagen de la figura (posicionada abajo via CSS)
+        if (figuraImg) {
+            const img = document.createElement('img');
+            img.src = figuraImg;
+            img.className = 'figura-print';
+            etiquetaDiv.appendChild(img);
+        }
+
+        // QR
+        const qrBox = await generarQRConLabel(rawId, modo === 'a4' ? 50 : 60);
+        etiquetaDiv.appendChild(qrBox);
+
+        etiquetasHtml.push(etiquetaDiv.outerHTML);
 
         // Limpiar contenedor temporal
         if (contenedorTemporal) {
