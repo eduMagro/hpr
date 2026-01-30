@@ -406,6 +406,8 @@
                 </div>
             </div>
             <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+            <script src="{{ asset('js/imprimirEtiqueta.js') }}"></script>
             <script>
                 window.etiquetaModalActual = null;
 
@@ -495,144 +497,11 @@
                 }
             </script>
             <script>
-                // Función para imprimir desde el modal
+                // Función para imprimir desde el modal - usa función unificada
                 function imprimirEtiquetaModal() {
                     if (!window.etiquetaModalActual) return alert('No hay etiqueta seleccionada');
-                    imprimirEtiqueta(window.etiquetaModalActual.datos.etiqueta_sub_id);
-                }
-
-                async function imprimirEtiqueta(etiquetaSubId) {
-                    const svgElement = document.querySelector('#modalContent svg');
-                    if (!svgElement) return alert('SVG no encontrado');
-
-                    /* --- convierte SVG en imagen HD --- */
-                    let svgImg = null;
-                    try {
-                        const svgClone = svgElement.cloneNode(true);
-                        const bbox = svgElement.getBoundingClientRect();
-                        const width = bbox.width || 600;
-                        const height = bbox.height || 150;
-
-                        svgClone.setAttribute('width', width);
-                        svgClone.setAttribute('height', height);
-                        if (!svgClone.getAttribute('viewBox')) {
-                            svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
-                        }
-
-                        // Fondo blanco
-                        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                        bgRect.setAttribute('x', '0');
-                        bgRect.setAttribute('y', '0');
-                        bgRect.setAttribute('width', width);
-                        bgRect.setAttribute('height', height);
-                        bgRect.setAttribute('fill', '#ffffff');
-                        svgClone.insertBefore(bgRect, svgClone.firstChild);
-
-                        const svgData = new XMLSerializer().serializeToString(svgClone);
-                        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                        const svgUrl = URL.createObjectURL(svgBlob);
-
-                        svgImg = await new Promise((resolve) => {
-                            const img = new Image();
-                            img.onload = () => {
-                                const scale = 4;
-                                const canvas = document.createElement('canvas');
-                                canvas.width = width * scale;
-                                canvas.height = height * scale;
-                                const ctx = canvas.getContext('2d');
-                                ctx.imageSmoothingEnabled = true;
-                                ctx.imageSmoothingQuality = 'high';
-                                ctx.scale(scale, scale);
-                                ctx.fillStyle = '#ffffff';
-                                ctx.fillRect(0, 0, width, height);
-                                ctx.drawImage(img, 0, 0, width, height);
-                                URL.revokeObjectURL(svgUrl);
-                                resolve(canvas.toDataURL('image/png', 1.0));
-                            };
-                            img.onerror = () => {
-                                URL.revokeObjectURL(svgUrl);
-                                resolve(null);
-                            };
-                            img.src = svgUrl;
-                        });
-                    } catch (e) {
-                        console.warn('Error al convertir SVG:', e);
-                    }
-
-                    if (!svgImg) return alert('Error al procesar la imagen');
-
-                    /* --- clona contenido del modal y sustituye SVG --- */
-                    const clone = document.getElementById('modalContent').cloneNode(true);
-                    clone.classList.add('etiqueta-print');
-                    clone.querySelectorAll('.no-print').forEach(el => el.remove());
-
-                    const svgClone = clone.querySelector('svg');
-                    const svgContainer = clone.querySelector('[id^="contenedor-svg-"]') || clone.querySelector('div[style*="min-height"]');
-                    const img = new Image();
-                    img.src = svgImg;
-                    img.style.width = '100%';
-                    img.style.height = 'auto';
-                    if (svgClone) svgClone.remove();
-                    if (svgContainer) {
-                        svgContainer.innerHTML = '';
-                        svgContainer.appendChild(img);
-                    }
-
-                    /* --- genera QR y lo añade --- */
-                    const tempQR = document.createElement('div');
-                    document.body.appendChild(tempQR);
-                    new QRCode(tempQR, {
-                        text: etiquetaSubId,
-                        width: 60,
-                        height: 60
-                    });
-
-                    setTimeout(() => {
-                        const qrImg = tempQR.querySelector('img');
-                        const qrBox = document.createElement('div');
-                        qrBox.className = 'qr-print';
-                        qrBox.appendChild(qrImg);
-
-                        // Añadir código de subetiqueta debajo del QR
-                        const qrLabel = document.createElement('div');
-                        qrLabel.className = 'qr-label';
-                        qrLabel.textContent = etiquetaSubId;
-                        qrBox.appendChild(qrLabel);
-
-                        clone.insertBefore(qrBox, clone.firstChild);
-
-                        /* --- abre ventana A6 --- */
-                        const w = window.open('', '_blank');
-                        const style = `
-<style>
-@page { size: A6 landscape; margin: 0; }
-body { margin:0; font-family:Arial,sans-serif; }
-.etiqueta-print{
-    width: 200mm;
-    height: 100mm;
-    background:#fe7f09; border:2px solid #000;
-    padding:4mm; box-sizing:border-box; position:relative;
-}
-.etiqueta-print img{ max-width:100%; height:auto; display:block; margin-top:6mm; }
-.qr-print{
-    position:absolute; top:8mm; right:8mm;
-    border:2px solid #000; padding:2px; background:#fff; text-align:center;
-}
-.qr-print img{ width:60px; height:60px; display:block; }
-.qr-label{ font-size:7pt; font-weight:bold; margin-top:1mm; word-break:break-all; }
-</style>`;
-
-                        w.document.write(`
-<html><head><title>Etiqueta ${etiquetaSubId}</title>${style}</head>
-<body>${clone.outerHTML}
-<script>
-  window.onload = () => { window.print(); setTimeout(()=>window.close(),800); };
-<\/script>
-</body></html>
-        `);
-                        w.document.close();
-                        tempQR.remove();
-                    }, 250);
+                    // Usa la función unificada de imprimirEtiqueta.js
+                    window.imprimirEtiquetas(window.etiquetaModalActual.datos.etiqueta_sub_id, 'a6');
                 }
             </script>
             <script>
