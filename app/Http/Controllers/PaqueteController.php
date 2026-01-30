@@ -822,8 +822,10 @@ class PaqueteController extends Controller
 
         // 8) Respuesta JSON
         return response()->json([
+            'id'                 => $paquete->id,
             'codigo'             => $paquete->codigo,
             'paquete_id'         => $paquete->id,
+            'estado'             => $paquete->estado ?? 'pendiente',
             'ancho'              => (float) $tamano['ancho'],
             'longitud'           => (float) $tamano['longitud'],
             'celdas_largo'       => $celdasLargo,

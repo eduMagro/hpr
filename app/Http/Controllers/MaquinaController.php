@@ -37,6 +37,7 @@ use App\Models\GrupoResumen;
 use App\Models\EtiquetaEnsamblaje;
 use App\Models\PlanillaEntidad;
 use App\Models\OrdenPlanillaEnsamblaje;
+use App\Services\LocalizacionPaqueteService;
 
 class MaquinaController extends Controller
 {
@@ -473,21 +474,21 @@ class MaquinaController extends Controller
         $gruposResumen = empty($planillaIds)
             ? collect() // Sin planillas activas = sin grupos
             : GrupoResumen::where('activo', true)
-                ->where('maquina_id', $maquina->id)
-                ->where(function ($query) use ($planillaIds) {
-                    $query->whereIn('planilla_id', $planillaIds)
-                        ->orWhereNull('planilla_id'); // Grupos multi-planilla
-                })
-                ->with(['etiquetas.planilla', 'planilla'])
-                ->get()
-                // Filtrar grupos multi-planilla: solo los que tienen etiquetas de planillas activas
-                ->filter(function ($grupo) use ($planillaIds) {
-                    if (!is_null($grupo->planilla_id)) {
-                        return true; // Grupos con planilla específica ya están filtrados
-                    }
-                    // Para multi-planilla: verificar que al menos una etiqueta pertenezca a planilla activa
-                    return $grupo->etiquetas->contains(fn($et) => in_array($et->planilla_id, $planillaIds));
-                });
+            ->where('maquina_id', $maquina->id)
+            ->where(function ($query) use ($planillaIds) {
+                $query->whereIn('planilla_id', $planillaIds)
+                    ->orWhereNull('planilla_id'); // Grupos multi-planilla
+            })
+            ->with(['etiquetas.planilla', 'planilla'])
+            ->get()
+            // Filtrar grupos multi-planilla: solo los que tienen etiquetas de planillas activas
+            ->filter(function ($grupo) use ($planillaIds) {
+                if (!is_null($grupo->planilla_id)) {
+                    return true; // Grupos con planilla específica ya están filtrados
+                }
+                // Para multi-planilla: verificar que al menos una etiqueta pertenezca a planilla activa
+                return $grupo->etiquetas->contains(fn($et) => in_array($et->planilla_id, $planillaIds));
+            });
 
         // OPTIMIZADO: Cargar todos los elementos de grupos en UNA sola consulta (evita N+1)
         $todosEtiquetaIds = $gruposResumen->flatMap(fn($g) => $g->etiquetas->pluck('id'))->unique()->toArray();
@@ -2363,10 +2364,10 @@ class MaquinaController extends Controller
             $etiquetasConPendienteEnMaquina2 = $planilla->etiquetas()
                 ->whereHas('elementosPorId', function ($q) {
                     $q->whereNotNull('maquina_id_2')
-                      ->where(function ($subQ) {
-                          $subQ->whereNull('estado2')
-                               ->orWhere('estado2', 'pendiente');
-                      });
+                        ->where(function ($subQ) {
+                            $subQ->whereNull('estado2')
+                                ->orWhere('estado2', 'pendiente');
+                        });
                 })
                 ->whereNotIn('estado', ['fabricada', 'pendiente'])
                 ->get();
@@ -2537,6 +2538,126 @@ class MaquinaController extends Controller
                 $orden->update(['posicion' => $posicion]);
             }
             $posicion++;
+        }
+    }
+
+    /**
+     * Expide un paquete desde una máquina tipo grúa.
+     *
+     * Marca el paquete como 'entregado' y elimina su localización del mapa.
+     * Se usa cuando el paquete sale de la nave sin pasar por una salida formal.
+     *
+     * @param Request $request
+     * @param int $maquinaId ID de la máquina (grúa)
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function expedirPaquete(Request $request, int $maquinaId)
+    {
+        try {
+            // Validar que la máquina existe y es de tipo grúa
+            $maquina = Maquina::findOrFail($maquinaId);
+
+            if (!$this->esGrua($maquina)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo las máquinas tipo grúa pueden expedir paquetes.'
+                ], 422);
+            }
+
+            // Validar el paquete
+            $request->validate([
+                'paquete_id' => 'required|exists:paquetes,id',
+            ], [
+                'paquete_id.required' => 'Debe seleccionar un paquete.',
+                'paquete_id.exists' => 'El paquete no existe.',
+            ]);
+
+            $paquete = Paquete::findOrFail($request->paquete_id);
+
+            // Verificar que el paquete no esté ya entregado
+            if ($paquete->estado === 'entregado') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El paquete ya fue entregado anteriormente.'
+                ], 422);
+            }
+
+            // Verificar que el paquete pertenece a la misma nave que la grúa
+            if ($paquete->nave_id !== $maquina->obra_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El paquete no pertenece a la nave de esta grúa.'
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            // Crear movimiento de entrega completado
+            $movimiento = Movimiento::create([
+                'tipo' => 'Entrega paquete',
+                'paquete_id' => $paquete->id,
+                'nave_id' => $maquina->obra_id,
+                'maquina_origen' => $maquinaId,
+                'ubicacion_origen' => $paquete->ubicacion_id,
+                'estado' => 'completado',
+                'prioridad' => 1,
+                'descripcion' => "Paquete {$paquete->codigo} entregado manualmente desde grúa {$maquina->codigo}",
+                'fecha_solicitud' => now(),
+                'fecha_ejecucion' => now(),
+                'solicitado_por' => auth()->id(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
+            // Marcar el paquete como entregado
+            $paquete->update(['estado' => 'entregado']);
+
+            // Eliminar la localización del paquete
+            $localizacionService = app(LocalizacionPaqueteService::class);
+            $localizacionService->eliminarLocalizacionPaquete($paquete->id);
+
+            // Si el paquete estaba asignado a alguna salida, desvincularlo
+            DB::table('salidas_paquetes')->where('paquete_id', $paquete->id)->delete();
+
+            DB::commit();
+
+            Log::info('📦 Paquete expedido desde grúa', [
+                'paquete_id' => $paquete->id,
+                'paquete_codigo' => $paquete->codigo,
+                'maquina_id' => $maquinaId,
+                'maquina_codigo' => $maquina->codigo,
+                'usuario_id' => auth()->id(),
+                'movimiento_id' => $movimiento->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Paquete {$paquete->codigo} expedido correctamente.",
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'estado' => 'entregado',
+                ],
+                'movimiento_id' => $movimiento->id,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ Error al expedir paquete desde grúa: ' . $e->getMessage(), [
+                'maquina_id' => $maquinaId,
+                'paquete_id' => $request->paquete_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al expedir el paquete: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

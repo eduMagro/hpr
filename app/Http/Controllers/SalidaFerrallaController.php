@@ -24,6 +24,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use App\Services\ActionLoggerService;
+use App\Services\LocalizacionPaqueteService;
 
 use Illuminate\Support\Facades\Mail;
 
@@ -571,6 +572,26 @@ class SalidaFerrallaController extends Controller
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            // Marcar paquetes como entregados y eliminar sus localizaciones
+            $localizacionService = app(LocalizacionPaqueteService::class);
+            $paquetesIds = $salida->paquetes->pluck('id')->toArray();
+
+            if (!empty($paquetesIds)) {
+                // Cambiar estado de todos los paquetes a 'entregado'
+                Paquete::whereIn('id', $paquetesIds)->update(['estado' => 'entregado']);
+
+                // Eliminar localizaciones de los paquetes
+                foreach ($paquetesIds as $paqueteId) {
+                    $localizacionService->eliminarLocalizacionPaquete($paqueteId);
+                }
+
+                Log::info('📦 Paquetes marcados como entregados y localizaciones eliminadas', [
+                    'salida_id' => $salida->id,
+                    'paquetes_ids' => $paquetesIds,
+                ]);
+            }
+
             $salida->estado = 'completada';
             $salida->save();
             $movimiento->update([
@@ -580,7 +601,7 @@ class SalidaFerrallaController extends Controller
             ]);
             return response()->json([
                 'success' => true,
-                'message' => 'Movimiento y salida completados.'
+                'message' => 'Movimiento y salida completados. ' . count($paquetesIds) . ' paquete(s) entregado(s).'
             ]);
         } catch (\Exception $e) {
             Log::error('❌ Error en completarDesdeMovimiento(): ' . $e->getMessage(), [
