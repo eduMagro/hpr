@@ -135,11 +135,11 @@
 
         /* Light Mode Scrollbar */
         ::-webkit-scrollbar-track {
-            background: #111827;
+            background: transparent;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #c9c9c9;
+            background: #969696;
             /* border-radius: 4px; */
         }
 
@@ -154,7 +154,7 @@
         }
 
         html.dark ::-webkit-scrollbar-thumb {
-            background: #4b5563;
+            background: #2563eb;
             /* gray-600 */
             /* border-radius: 4px; */
         }
@@ -282,7 +282,7 @@ data-user-id="{{ auth()->id() }}" @endauth>
                     @isset($header)
                         <header class="mb-6">
                             <div
-                                class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg px-6 py-4 border border-gray-200 dark:border-gray-700 transition-colors">
+                                class="bg-white dark:bg-gray-500/20 shadow-sm sm:rounded-lg px-6 py-4 border border-gray-200 dark:border-gray-700 transition-colors">
                                 {{ $header }}
                             </div>
                         </header>
