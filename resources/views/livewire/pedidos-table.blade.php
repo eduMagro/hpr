@@ -491,30 +491,35 @@
                                                     </button>
                                                 @endif
 
-                                                {{-- BOTÓN DESACTIVAR --}}
-                                                @if ($estado === 'activo' && $pedido)
+                                                {{-- BOTÓN DESACTIVAR (siempre en DOM, oculto si no es activo) --}}
+                                                @if ($pedido)
                                                     <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea->id]) }}">
+                                                        action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea->id]) }}"
+                                                        class="form-desactivar-linea {{ $estado !== 'activo' ? 'hidden' : '' }}"
+                                                        data-pedido-id="{{ $pedido->id }}"
+                                                        data-linea-id="{{ $linea->id }}"
+                                                        wire:ignore>
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" title="Desactivar línea"
-                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                            class="btn-desactivar-linea bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
                                                             Desactivar
                                                         </button>
                                                     </form>
                                                 @endif
 
-                                                {{-- BOTÓN ACTIVAR --}}
-                                                @if (($estado === 'pendiente' || $estado === 'parcial') && $esNaveValida && $pedido)
+                                                {{-- BOTÓN ACTIVAR (siempre en DOM si nave válida, oculto si activo/completado) --}}
+                                                @if ($esNaveValida && $pedido)
                                                     @php
                                                         $clienteId =
                                                             $linea->obra && $linea->obra->cliente
                                                                 ? $linea->obra->cliente->id
                                                                 : 0;
+                                                        $ocultarActivar = !in_array($estado, ['pendiente', 'parcial']);
                                                     @endphp
                                                     <form method="POST"
                                                         action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea->id]) }}"
-                                                        class="form-activar-linea"
+                                                        class="form-activar-linea {{ $ocultarActivar ? 'hidden' : '' }}"
                                                         data-cliente-id="{{ $clienteId }}"
                                                         data-pedido-id="{{ $pedido->id }}"
                                                         data-linea-id="{{ $linea->id }}" wire:ignore>
@@ -764,11 +769,13 @@
 
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
+                            toast: true,
+                            position: 'top',
                             icon: 'success',
-                            title: '¡Guardado!',
-                            text: 'Línea actualizada correctamente',
-                            timer: 1500,
-                            showConfirmButton: false
+                            title: 'Línea actualizada correctamente',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            timerProgressBar: true,
                         });
                     }
                 } else {
@@ -892,11 +899,13 @@
 
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
+                            toast: true,
+                            position: 'top',
                             icon: 'success',
-                            title: '¡Completado!',
-                            text: data.message || 'Línea completada correctamente',
-                            timer: 1500,
-                            showConfirmButton: false
+                            title: data.message || 'Línea completada correctamente',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            timerProgressBar: true,
                         });
                     }
                 } else {
@@ -935,5 +944,142 @@
         function confirmarCompletarLinea(form) {
             return confirm('¿Estás seguro de que deseas completar esta línea?');
         }
+
+        // ========== FUNCIÓN DESACTIVAR LÍNEA VÍA AJAX CON BLOQUEO ==========
+        function desactivarLineaAjax(event, form) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const pedidoId = form.getAttribute('data-pedido-id');
+            const lineaId = form.getAttribute('data-linea-id');
+            if (!pedidoId || !lineaId) {
+                form.submit();
+                return;
+            }
+
+            // Confirmación antes de desactivar
+            Swal.fire({
+                title: '¿Desactivar línea?',
+                text: '¿Estás seguro de que deseas desactivar esta línea?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, desactivar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    ejecutarDesactivacionAjax(form, pedidoId, lineaId);
+                }
+            });
+        }
+
+        function ejecutarDesactivacionAjax(form, pedidoId, lineaId) {
+            const fila = form.closest('tr');
+            const container = form.closest('.botones-estado-' + lineaId);
+            
+            // Bloquear todos los botones en la fila durante la petición
+            const botonesEnFila = fila ? fila.querySelectorAll('button, input[type="submit"]') : [];
+            const btnSubmit = form.querySelector('button[type="submit"]');
+            const textoOriginal = btnSubmit ? btnSubmit.innerHTML : '';
+
+            // Función para bloquear/desbloquear botones
+            function toggleBloqueo(bloquear) {
+                botonesEnFila.forEach(btn => {
+                    btn.disabled = bloquear;
+                    if (bloquear) {
+                        btn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                    } else {
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                    }
+                });
+            }
+
+            // Bloquear y mostrar spinner
+            toggleBloqueo(true);
+            if (btnSubmit) {
+                btnSubmit.innerHTML = `
+                    <svg class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                `;
+            }
+
+            const formData = new FormData(form);
+            if (!formData.has('_token')) {
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                if (csrfMeta) formData.append('_token', csrfMeta.content);
+            }
+            if (!formData.has('_method')) {
+                formData.append('_method', 'DELETE');
+            }
+
+            fetch(form.getAttribute('action'), {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                // Restaurar botón
+                if (btnSubmit) btnSubmit.innerHTML = textoOriginal;
+                toggleBloqueo(false);
+
+                if (!ok || !data.success) {
+                    const mensaje = data && data.message ? data.message : 'Error al desactivar la línea.';
+                    throw new Error(mensaje);
+                }
+
+                // Actualizar estado visual de la fila
+                if (fila) {
+                    fila.classList.remove('bg-yellow-100', 'bg-green-100', 'bg-gray-300');
+                    fila.classList.add('even:bg-gray-50', 'odd:bg-white');
+                    
+                    // Actualizar celda de estado
+                    const celdaEstado = fila.querySelector('td:nth-child(17)');
+                    if (celdaEstado) celdaEstado.textContent = 'pendiente';
+                }
+
+                // Alternar visibilidad de formularios
+                const formActivar = fila.querySelector('.form-activar-linea');
+                const formDesactivar = fila.querySelector('.form-desactivar-linea');
+                if (formActivar) formActivar.classList.remove('hidden');
+                if (formDesactivar) formDesactivar.classList.add('hidden');
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top',
+                    icon: 'success',
+                    title: data.message || 'Línea desactivada correctamente.',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+            })
+            .catch(error => {
+                // Restaurar botón en caso de error
+                if (btnSubmit) btnSubmit.innerHTML = textoOriginal;
+                toggleBloqueo(false);
+
+                console.error(error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'Error al desactivar la línea.',
+                });
+            });
+        }
+
+        // Interceptar submit de formularios de desactivar
+        document.addEventListener('submit', function(ev) {
+            const form = ev.target.closest('form');
+            if (form && form.classList.contains('form-desactivar-linea')) {
+                desactivarLineaAjax(ev, form);
+            }
+        }, true);
     </script>
 @endpush
