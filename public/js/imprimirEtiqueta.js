@@ -313,13 +313,14 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
             img.style.width = '100%';
             img.style.height = 'auto';
             img.style.display = 'block';
+            img.style.position = 'absolute';
+            img.style.bottom = '3mm';
+            img.style.left = '0';
             img.className = 'figura-print';
 
             if (host) {
                 host.innerHTML = '';
                 host.appendChild(img);
-                // Posicionar en la parte baja
-                host.style.marginTop = 'auto';
             }
         }
 
