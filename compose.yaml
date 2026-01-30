@@ -64,6 +64,21 @@ services:
                 - ping
             retries: 3
             timeout: 5s
+    phpmyadmin:
+        image: 'phpmyadmin:latest'
+        ports:
+            - 8080:80
+        environment:
+            PMA_HOST: mysql
+            PMA_USER: '${DB_USERNAME}'
+            PMA_PASSWORD: '${DB_PASSWORD}'
+            UPLOAD_LIMIT: 10G
+            MEMORY_LIMIT: 12G
+            MAX_EXECUTION_TIME: 300
+        networks:
+            - sail
+        depends_on:
+            - mysql
 networks:
     sail:
         driver: bridge

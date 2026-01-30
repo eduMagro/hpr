@@ -1,0 +1,1 @@
+function i(e,o={}){const{selector:t=null,once:d=!1}=o;let a=!1;const n=()=>{t&&!document.querySelector(t)||d&&a||(a=!0,e())};document.readyState==="loading"?document.addEventListener("DOMContentLoaded",n):n(),document.addEventListener("livewire:navigated",n)}function r(e){document.addEventListener("livewire:navigating",e)}export{r as a,i as o};
