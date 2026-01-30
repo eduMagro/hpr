@@ -87,11 +87,11 @@
             </div>
 
             <div class="flex justify-end mt-8 gap-3">
-                <button type="button" onclick="document.getElementById('modalDividirElemento').classList.add('hidden')"
+                <button type="button" id="btnCancelarDividir"
                     class="px-6 py-3 bg-gray-500 text-white text-base font-medium rounded-lg hover:bg-gray-600 transition">
                     Cancelar
                 </button>
-                <button type="button" onclick="enviarAccionEtiqueta()"
+                <button type="button" id="btnAceptarDividir"
                     class="px-6 py-3 bg-purple-600 text-white text-base font-medium rounded-lg hover:bg-purple-700 transition">
                     Aceptar
                 </button>
@@ -105,6 +105,42 @@
 
     // Variable para almacenar las máquinas cargadas
     let maquinasDisponiblesCache = null;
+
+    // Attach event listeners cuando el DOM esté listo
+    (function initDividirElementoModal() {
+        const btnCancelar = document.getElementById('btnCancelarDividir');
+        const btnAceptar = document.getElementById('btnAceptarDividir');
+        const modal = document.getElementById('modalDividirElemento');
+
+        if (btnCancelar) {
+            btnCancelar.addEventListener('click', function() {
+                if (modal) modal.classList.add('hidden');
+            });
+        }
+
+        if (btnAceptar) {
+            btnAceptar.addEventListener('click', async function() {
+                console.log('🔘 Botón Aceptar clickeado');
+                if (typeof window.enviarAccionEtiqueta === 'function') {
+                    try {
+                        await window.enviarAccionEtiqueta();
+                    } catch (error) {
+                        console.error('❌ Error en enviarAccionEtiqueta:', error);
+                        if (window.Swal) {
+                            Swal.fire('Error', error.message || 'Error desconocido', 'error');
+                        } else {
+                            alert('Error: ' + (error.message || 'Error desconocido'));
+                        }
+                    }
+                } else {
+                    console.error('❌ window.enviarAccionEtiqueta no está definida');
+                    alert('Error: La función de envío no está disponible. Recarga la página.');
+                }
+            });
+        } else {
+            console.error('❌ No se encontró el botón btnAceptarDividir');
+        }
+    })();
 
     // Función para dividir automáticamente en múltiples etiquetas
     async function dividirAutomaticamente() {
@@ -532,31 +568,51 @@
             }
 
             if (accion === 'dividir') {
+                console.log('✂️ Iniciando acción DIVIDIR');
                 const barrasTotales = parseInt(document.getElementById('dividir_barras_totales').value) || 0;
                 const barrasAMover = parseInt(document.getElementById('barras_a_mover').value || '0', 10);
+                console.log('📊 barrasTotales:', barrasTotales, 'barrasAMover:', barrasAMover);
 
                 if (!barrasAMover || barrasAMover < 1) {
-                    alert('Introduce un número válido de barras a mover.');
+                    console.log('❌ Validación fallida: barrasAMover inválido');
+                    if (window.Swal) {
+                        Swal.fire('Atención', 'Introduce un número válido de barras a mover.', 'warning');
+                    } else {
+                        alert('Introduce un número válido de barras a mover.');
+                    }
                     return;
                 }
 
                 if (barrasAMover >= barrasTotales) {
-                    alert('No puedes mover todas o más barras de las que tiene el elemento. Usa "Pasar todo a una nueva etiqueta" si quieres mover todo.');
+                    console.log('❌ Validación fallida: barrasAMover >= barrasTotales');
+                    if (window.Swal) {
+                        Swal.fire('Atención', 'No puedes mover todas o más barras de las que tiene el elemento.', 'warning');
+                    } else {
+                        alert('No puedes mover todas o más barras de las que tiene el elemento.');
+                    }
                     return;
+                }
+
+                console.log('🌐 Enviando petición a servidor...');
+                const csrfToken = document.querySelector('input[name=_token]')?.value;
+                if (!csrfToken) {
+                    throw new Error('No se encontró el token CSRF');
                 }
 
                 const resp = await fetch('{{ route('elementos.dividir') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value,
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                     body: JSON.stringify({
                         elemento_id: elementoId,
                         barras_a_mover: barrasAMover
                     })
                 });
+                console.log('📥 Respuesta recibida, status:', resp.status);
                 const data = await resp.json();
+                console.log('📦 Data:', data);
                 if (!resp.ok || data.success === false) throw new Error(data.message || 'Error al dividir');
 
                 // Mostrar mensaje de éxito
@@ -571,19 +627,38 @@
                 }
             } else if (accion === 'mover') {
                 // mover todo a nueva subetiqueta
+                console.log('➡️ Iniciando acción MOVER');
+                const csrfToken = document.querySelector('input[name=_token]')?.value;
+                if (!csrfToken) {
+                    throw new Error('No se encontró el token CSRF');
+                }
+
                 const resp = await fetch('{{ route('subetiquetas.moverTodo') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value,
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                     body: JSON.stringify({
                         elemento_id: elementoId
                     })
                 });
+                console.log('📥 Respuesta recibida, status:', resp.status);
                 const data = await resp.json();
+                console.log('📦 Data:', data);
                 if (!resp.ok || data.success === false) throw new Error(data.message ||
                     'Error al mover a nueva etiqueta');
+
+                // Mostrar mensaje de éxito
+                if (window.Swal) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Etiqueta creada',
+                        html: data.message || 'El elemento se ha movido a una nueva etiqueta',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                }
             }
 
             // Cerrar modal y refrescar sin recargar la página
@@ -593,6 +668,8 @@
             document.getElementById('barras_a_mover').value = '';
             document.getElementById('previewDivision').classList.add('hidden');
 
+            console.log('✅ Acción completada, cerrando modal y refrescando...');
+
             // Llamar a la función de refresco si existe
             if (typeof window.refrescarEtiquetasMaquina === 'function') {
                 window.refrescarEtiquetasMaquina();
@@ -601,10 +678,11 @@
                 window.location.reload();
             }
         } catch (e) {
+            console.error('❌ Error en enviarAccionEtiqueta:', e);
             if (window.Swal) {
-                Swal.fire('Error', e.message, 'error');
+                Swal.fire('Error', e.message || 'Error desconocido', 'error');
             } else {
-                alert(e.message);
+                alert('Error: ' + (e.message || 'Error desconocido'));
             }
         }
     }
