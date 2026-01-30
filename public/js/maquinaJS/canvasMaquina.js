@@ -1,10 +1,6 @@
 // =======================
 // Colores y configuración
 // =======================
-(function() {
-// =======================
-// Colores y configuración
-// =======================
 const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)";
 const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
 const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
@@ -359,6 +355,13 @@ function dirKey(dx, dy, prec) {
 function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
     const dirPrecision = (opt && opt.dirPrecision) || 1e-2;
     const labelFormat = (opt && opt.labelFormat) || { decimals: 0, step: null };
+
+    // Detectar factor de escala comparando longitudes totales
+    const totalAdj = segsAdj.reduce((sum, s) => sum + Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y), 0);
+    const totalOrig = segsOrig.reduce((sum, s) => sum + (s.length || Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y)), 0);
+    const scaleFactor = totalOrig > 0 ? totalAdj / totalOrig : 1;
+
+    // Crear buckets de longitudes originales por dirección
     const buckets = new Map();
     for (let i = 0; i < segsOrig.length; i++) {
         const s = segsOrig[i];
@@ -366,11 +369,17 @@ function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
             dy = s.end.y - s.start.y;
         const key = dirKey(dx, dy, dirPrecision);
         const arr = buckets.get(key) || [];
-        arr.push(s.length || Math.hypot(dx, dy));
+        arr.push({ length: s.length || Math.hypot(dx, dy), index: i });
         buckets.set(key, arr);
     }
+
+    // También crear un mapa indexado para fallback directo
+    const origByIndex = segsOrig.map(s => s.length || Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y));
+
     const seen = new Set();
+    const usedIndices = new Set();
     const res = [];
+
     for (let i = 0; i < segsAdj.length; i++) {
         const s = segsAdj[i];
         const dx = s.end.x - s.start.x,
@@ -379,18 +388,31 @@ function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
         const candidates = buckets.get(key) || [];
         const adjLen = Math.hypot(dx, dy);
         let chosen = adjLen;
+
         if (candidates.length) {
-            let best = candidates[0],
-                bestD = Math.abs(best - adjLen);
-            for (let j = 1; j < candidates.length; j++) {
-                const d = Math.abs(candidates[j] - adjLen);
-                if (d < bestD) {
-                    best = candidates[j];
-                    bestD = d;
+            // Calcular la longitud original esperada (desescalando)
+            const expectedOrig = adjLen / scaleFactor;
+
+            // Buscar la longitud original más cercana a la esperada (no a la escalada)
+            let best = null, bestD = Infinity;
+            for (const c of candidates) {
+                // Preferir índices no usados para mejor correspondencia
+                const d = Math.abs(c.length - expectedOrig);
+                const penalty = usedIndices.has(c.index) ? 0.1 : 0; // Pequeña penalización por reusar
+                if (d + penalty < bestD) {
+                    best = c;
+                    bestD = d + penalty;
                 }
             }
-            chosen = best;
+            if (best) {
+                chosen = best.length;
+                usedIndices.add(best.index);
+            }
+        } else if (i < origByIndex.length) {
+            // Fallback: usar longitud original por índice si no hay match por dirección
+            chosen = origByIndex[i];
         }
+
         const label = formatDimLabel(chosen, labelFormat);
         const k2 = key + "|" + label;
         if (seen.has(k2)) continue;
@@ -897,9 +919,6 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
             const legendTop = Math.min(...window.__legendBoxesGroup.map(box => box.top));
             const maxYForThisCol = legendTop - 15; // 15px de margen de seguridad para evitar que elementos toquen la leyenda
             availableHeight = Math.max(10, maxYForThisCol - padding);
-            console.log(`📏 Columna ${c}: X=${colLeftX.toFixed(0)}-${colRightX.toFixed(0)}, legendWidth=${legendWidth.toFixed(0)}, solape=${(overlapPercentage*100).toFixed(0)}%, altura reducida a ${availableHeight.toFixed(0)}px`);
-        } else {
-            console.log(`📏 Columna ${c}: X=${colLeftX.toFixed(0)}-${colRightX.toFixed(0)}, legendWidth=${legendWidth.toFixed(0)}, solape=${(overlapPercentage*100).toFixed(0)}%, altura completa ${availableHeight.toFixed(0)}px`);
         }
 
         // Si solo hay un elemento, centrarlo verticalmente
@@ -1013,40 +1032,89 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
         window.__angleBoxesGroup = [];
         window.__legendBoxesGroup = [];
 
-        // ===== leyenda: preparar entradas primero, dibujarla YA para reservar espacio =====
-        const legendEntries = (grupo.elementos || []).map((elemento, idx) => {
-            const barras = elemento.barras != null ? elemento.barras : 0;
-            let diametro = "N/A";
+        // ===== AGRUPAR elementos con mismo diámetro+dimensiones, sumando barras =====
+        const elementosAgrupados = [];
+        const gruposMap = new Map(); // key: "diametro|dimensiones" -> índice en elementosAgrupados
+
+        (grupo.elementos || []).forEach((elemento) => {
+            // Normalizar diámetro
+            let diametroNorm = "0";
             if (elemento.diametro != null && elemento.diametro !== "") {
                 const dstr = String(elemento.diametro).replace(",", ".");
                 const mtch = dstr.match(/-?\d+(?:\.\d+)?/);
                 if (mtch) {
                     const dn = parseFloat(mtch[0]);
-                    if (isFinite(dn)) diametro = String(Math.round(dn));
+                    if (isFinite(dn)) diametroNorm = String(Math.round(dn));
                 }
             }
 
-            // ✅ NUEVO: Construir texto de coladas
-            const coladas = [];
-            if (elemento.coladas?.colada1)
-                coladas.push(elemento.coladas.colada1);
-            if (elemento.coladas?.colada2)
-                coladas.push(elemento.coladas.colada2);
-            if (elemento.coladas?.colada3)
-                coladas.push(elemento.coladas.colada3);
+            // Normalizar dimensiones (trim, lowercase)
+            const dimensionesNorm = (elemento.dimensiones || "barra").trim().toLowerCase();
+            const key = `${diametroNorm}|${dimensionesNorm}`;
 
-            const textColadas =
-                coladas.length > 0 ? ` (${coladas.join(", ")})` : "";
+            if (gruposMap.has(key)) {
+                // Ya existe, sumar barras
+                const idx = gruposMap.get(key);
+                elementosAgrupados[idx].barrasTotal += (elemento.barras || 0);
+                // Acumular coladas únicas
+                if (elemento.coladas?.colada1 && !elementosAgrupados[idx].coladasSet.has(elemento.coladas.colada1)) {
+                    elementosAgrupados[idx].coladasSet.add(elemento.coladas.colada1);
+                }
+                if (elemento.coladas?.colada2 && !elementosAgrupados[idx].coladasSet.has(elemento.coladas.colada2)) {
+                    elementosAgrupados[idx].coladasSet.add(elemento.coladas.colada2);
+                }
+                if (elemento.coladas?.colada3 && !elementosAgrupados[idx].coladasSet.has(elemento.coladas.colada3)) {
+                    elementosAgrupados[idx].coladasSet.add(elemento.coladas.colada3);
+                }
+            } else {
+                // Nuevo grupo
+                const coladasSet = new Set();
+                if (elemento.coladas?.colada1) coladasSet.add(elemento.coladas.colada1);
+                if (elemento.coladas?.colada2) coladasSet.add(elemento.coladas.colada2);
+                if (elemento.coladas?.colada3) coladasSet.add(elemento.coladas.colada3);
+
+                elementosAgrupados.push({
+                    elemento: elemento, // Elemento representativo para dibujar
+                    diametro: diametroNorm,
+                    dimensiones: elemento.dimensiones,
+                    barrasTotal: elemento.barras || 0,
+                    coladasSet: coladasSet,
+                });
+                gruposMap.set(key, elementosAgrupados.length - 1);
+            }
+        });
+
+        // ===== leyenda: usar elementos agrupados (únicos) con suma de barras =====
+        const legendEntries = elementosAgrupados.map((grp, idx) => {
+            // Construir texto de coladas: primero de la etiqueta, luego del grupo
+            const coladas = [];
+
+            // Colada de la etiqueta (asignada en primer clic)
+            if (grupo.colada_etiqueta) {
+                coladas.push(grupo.colada_etiqueta);
+            }
+            // Colada 2 de la etiqueta (asignada en segundo clic si cambió)
+            if (grupo.colada_etiqueta_2 && grupo.colada_etiqueta_2 !== grupo.colada_etiqueta) {
+                coladas.push(grupo.colada_etiqueta_2);
+            }
+
+            // Si no hay coladas de etiqueta, usar las del grupo de elementos
+            if (coladas.length === 0 && grp.coladasSet.size > 0) {
+                coladas.push(...grp.coladasSet);
+            }
+
+            const textColadas = coladas.length > 0 ? ` (${coladas.join(", ")})` : "";
 
             return {
                 letter: indexToLetters(idx),
-                text: `Ø${diametro} x${barras}${textColadas}`,
+                text: `Ø${grp.diametro} x${grp.barrasTotal}${textColadas}`,
             };
         });
         drawLegendBottomLeft(svg, legendEntries, ancho, alto); // ← primero, para evitar solapes con todo lo demás
 
-        // ====== medir piezas y decidir escala por elemento ======
-        const preproc = grupo.elementos.map((el) => {
+        // ====== medir piezas usando elementos únicos (agrupados) ======
+        const preproc = elementosAgrupados.map((grp) => {
+            const el = grp.elemento;
             const dimsRaw = extraerDimensiones(el.dimensiones || "");
             const dimsNoZero = combinarRectasConCeros(dimsRaw);
             let maxLinear = 0;
@@ -1078,8 +1146,9 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
             );
         }
 
-        // ====== bucle de pintado ======
-        grupo.elementos.forEach(function (elemento, idx) {
+        // ====== bucle de pintado (solo elementos únicos) ======
+        elementosAgrupados.forEach(function (grp, idx) {
+            const elemento = grp.elemento;
             const { dimsNoZero, dimsScaled, medida: m } = preproc[idx];
 
             const loc = indexInCol.get(idx);
@@ -1335,7 +1404,7 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                         window.mostrarPanelInfoElemento(elemento.id);
                     return;
                 }
-                abrirModalDividirElemento(elemento.id, etiquetaClick);
+                abrirModalDividirElemento(elemento.id, elemento.barras || 0);
             });
             pathEl.addEventListener("contextmenu", function (e) {
                 e.preventDefault();
@@ -1825,7 +1894,7 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
 // =======================
 // Script principal
 // =======================
-document.addEventListener("DOMContentLoaded", function () {
+function initCanvasMaquina() {
     if (window.setDataSources) {
         window.setDataSources({
             sugerencias: window.SUGERENCIAS || {},
@@ -1908,19 +1977,239 @@ document.addEventListener("DOMContentLoaded", function () {
 
         console.log(`✅ SVG actualizado con coladas para etiqueta ${etiquetaSubId}`, coladasPorElemento);
     };
-});
+
+    // =======================
+    // Función global para LIMPIAR coladas del SVG (usado al deshacer)
+    // =======================
+    window.limpiarColadasSVG = function(etiquetaSubId) {
+        if (!window.elementosAgrupadosScript) return;
+
+        // Buscar el grupo de la etiqueta
+        const grupos = window.elementosAgrupadosScript;
+        const grupoIndex = grupos.findIndex(g =>
+            g.etiqueta && String(g.etiqueta.etiqueta_sub_id) === String(etiquetaSubId)
+        );
+
+        if (grupoIndex === -1) {
+            console.warn(`No se encontró grupo para etiqueta ${etiquetaSubId}`);
+            return;
+        }
+
+        const grupo = grupos[grupoIndex];
+
+        // Limpiar coladas de todos los elementos
+        if (grupo.elementos) {
+            grupo.elementos.forEach(elemento => {
+                elemento.coladas = { colada1: null, colada2: null, colada3: null };
+            });
+        }
+
+        // Regenerar el SVG completo para este grupo
+        renderizarGrupoSVG(grupo, grupoIndex);
+
+        console.log(`🧹 Coladas limpiadas del SVG para etiqueta ${etiquetaSubId}`);
+    };
+
+    // =======================
+    // Listener para regenerar SVG cuando se deshace una etiqueta
+    // =======================
+    window.addEventListener('regenerar-svg-etiqueta', function(e) {
+        const etiquetaSubId = e.detail?.etiquetaSubId;
+        if (!etiquetaSubId || !window.elementosAgrupadosScript) return;
+
+        const grupos = window.elementosAgrupadosScript;
+        const grupoIndex = grupos.findIndex(g =>
+            g.etiqueta && String(g.etiqueta.etiqueta_sub_id) === String(etiquetaSubId)
+        );
+
+        if (grupoIndex === -1) {
+            console.warn(`No se encontró grupo para regenerar SVG: ${etiquetaSubId}`);
+            return;
+        }
+
+        const grupo = grupos[grupoIndex];
+        renderizarGrupoSVG(grupo, grupoIndex);
+        console.log(`🔄 SVG regenerado para etiqueta ${etiquetaSubId} (evento deshacer)`);
+    });
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initCanvasMaquina);
+} else {
+    initCanvasMaquina();
+}
+document.addEventListener("livewire:navigated", initCanvasMaquina);
 
 // =======================
 // Modal dividir elemento
 // =======================
-window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId) {
+window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId, barras) {
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
+    const inputBarrasTotales = document.getElementById("dividir_barras_totales");
+    const inputPesoTotal = document.getElementById("dividir_peso_total");
+    const labelBarras = document.getElementById("labelBarrasActuales");
+    const inputBarrasAMover = document.getElementById("barras_a_mover");
+    const preview = document.getElementById("previewDivision");
     const form = document.getElementById("formDividirElemento");
+    const badgeSugerencia = document.getElementById("badgeSugerenciaPeso");
+    const barrasSugeridas = document.getElementById("barrasSugeridas");
+    const detalleSugerencia = document.getElementById("detalleSugerencia");
+
     if (!modal || !input || !form) return;
+
     input.value = elementoId;
+
+    // Buscar elemento en elementosAgrupadosScript o gruposResumenData
+    let elementoData = null;
+    let barrasTotales = parseInt(barras) || 0;
+
+    // Buscar en elementosAgrupadosScript
+    if (window.elementosAgrupadosScript) {
+        for (const grupo of window.elementosAgrupadosScript) {
+            if (grupo.elementos) {
+                const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
+                if (elem) {
+                    elementoData = elem;
+                    if (elem.barras) {
+                        barrasTotales = parseInt(elem.barras) || 0;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // Si no se encontró, buscar en gruposResumenData
+    if (!elementoData && window.gruposResumenData) {
+        for (const grupo of window.gruposResumenData) {
+            if (grupo.elementos) {
+                const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
+                if (elem) {
+                    elementoData = elem;
+                    if (elem.barras) {
+                        barrasTotales = parseInt(elem.barras) || 0;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // Verificar si la etiqueta está en proceso/completada o el elemento pertenece a un paquete
+    const estadoEtiqueta = elementoData?.estado;
+    const etiquetaEnProcesoOCompletada = estadoEtiqueta === 'fabricando' || estadoEtiqueta === 'completada';
+    const tienePaquete = elementoData && elementoData.paquete_id;
+    const deshabilitarCambioMaquina = etiquetaEnProcesoOCompletada || tienePaquete;
+
+    // Actualizar estado del radio button "cambiar_maquina"
+    const radioCambiarMaquina = document.querySelector('input[name="accion_etiqueta"][value="cambiar_maquina"]');
+    const labelCambiarMaquina = radioCambiarMaquina?.closest('label');
+
+    if (radioCambiarMaquina) {
+        radioCambiarMaquina.disabled = deshabilitarCambioMaquina;
+
+        // Actualizar estilo visual del label
+        if (labelCambiarMaquina) {
+            if (deshabilitarCambioMaquina) {
+                labelCambiarMaquina.classList.add('opacity-50', 'cursor-not-allowed');
+                // Añadir tooltip explicativo
+                let motivo = etiquetaEnProcesoOCompletada ? 'La etiqueta está en proceso o completada' : 'El elemento pertenece a un paquete';
+                labelCambiarMaquina.setAttribute('title', motivo);
+            } else {
+                labelCambiarMaquina.classList.remove('opacity-50', 'cursor-not-allowed');
+                labelCambiarMaquina.removeAttribute('title');
+            }
+        }
+
+        // Si estaba seleccionado y ahora está deshabilitado, cambiar a dividir
+        if (deshabilitarCambioMaquina && radioCambiarMaquina.checked) {
+            const radioDividir = document.querySelector('input[name="accion_etiqueta"][value="dividir"]');
+            if (radioDividir) {
+                radioDividir.checked = true;
+                if (typeof toggleCamposDivision === 'function') {
+                    toggleCamposDivision();
+                }
+            }
+        }
+    }
+
+    if (inputBarrasTotales) inputBarrasTotales.value = barrasTotales;
+    if (labelBarras) labelBarras.textContent = barrasTotales > 0 ? barrasTotales : '-';
+
+    // Obtener peso del elemento y calcular sugerencia para paquetes de máx 1200 kg
+    // Usar peso_numerico (valor numérico) en lugar de peso (cadena formateada)
+    const pesoTotal = elementoData ? parseFloat(elementoData.peso_numerico) || 0 : 0;
+    if (inputPesoTotal) inputPesoTotal.value = pesoTotal;
+
+    console.log('🔍 Debug badge sugerencia:', {
+        peso_numerico: elementoData?.peso_numerico,
+        pesoTotal,
+        barrasTotales
+    });
+
+    // Calcular barras sugeridas para mantener paquetes bajo 1200 kg
+    const PESO_MAXIMO_PAQUETE = 1200;
+    const divisionAutoData = document.getElementById('divisionAutoData');
+
+    if (badgeSugerencia && barrasSugeridas && barrasTotales > 0 && pesoTotal > 0) {
+        const pesoPorBarra = pesoTotal / barrasTotales;
+        const barrasMaxPorPaquete = Math.floor(PESO_MAXIMO_PAQUETE / pesoPorBarra);
+
+        if (pesoTotal > PESO_MAXIMO_PAQUETE && barrasMaxPorPaquete < barrasTotales) {
+            // Calcular cuántas etiquetas se necesitan
+            const numEtiquetas = Math.ceil(barrasTotales / barrasMaxPorPaquete);
+
+            // Calcular distribución equitativa de barras
+            const barrasPorEtiqueta = Math.floor(barrasTotales / numEtiquetas);
+            const etiquetasConBarraExtra = barrasTotales % numEtiquetas;
+
+            // Guardar datos para división automática
+            if (divisionAutoData) {
+                divisionAutoData.value = JSON.stringify({
+                    elemento_id: elementoId,
+                    etiqueta_sub_id: elementoData?.etiqueta_sub_id || null,
+                    num_etiquetas: numEtiquetas,
+                    barras_por_etiqueta: barrasPorEtiqueta,
+                    etiquetas_con_barra_extra: etiquetasConBarraExtra,
+                    barras_totales: barrasTotales,
+                    peso_por_barra: pesoPorBarra
+                });
+            }
+
+            // Construir mensaje descriptivo
+            let detalle = '';
+            if (etiquetasConBarraExtra === 0) {
+                // Todas las etiquetas tienen el mismo número de barras
+                detalle = `${numEtiquetas} etiquetas de ${barrasPorEtiqueta} barras cada una (~${(barrasPorEtiqueta * pesoPorBarra).toFixed(0)} kg)`;
+            } else {
+                // Algunas etiquetas tienen una barra más
+                const barrasGrande = barrasPorEtiqueta + 1;
+                const barrasPeque = barrasPorEtiqueta;
+                detalle = `${etiquetasConBarraExtra} etiqueta(s) de ${barrasGrande} barras + ${numEtiquetas - etiquetasConBarraExtra} etiqueta(s) de ${barrasPeque} barras`;
+            }
+
+            barrasSugeridas.textContent = `${numEtiquetas} etiquetas`;
+            detalleSugerencia.innerHTML = detalle + `<br><span class="text-xs text-amber-600">Barras máx por etiqueta: ${barrasMaxPorPaquete} (para no superar ${PESO_MAXIMO_PAQUETE} kg)</span>`;
+            badgeSugerencia.classList.remove('hidden');
+        } else {
+            // No necesita dividir, el peso ya es menor a 1200 kg
+            badgeSugerencia.classList.add('hidden');
+            if (divisionAutoData) divisionAutoData.value = '';
+        }
+    } else {
+        if (badgeSugerencia) badgeSugerencia.classList.add('hidden');
+        if (divisionAutoData) divisionAutoData.value = '';
+    }
+
+    // Limpiar campo de barras a mover y preview
+    if (inputBarrasAMover) inputBarrasAMover.value = '';
+    if (preview) preview.classList.add('hidden');
+
     if (window.rutaDividirElemento)
         form.setAttribute("action", window.rutaDividirElemento);
+
     modal.classList.remove("hidden");
 }
 window.enviarDivision = async function enviarDivision() {
@@ -1934,7 +2223,19 @@ window.enviarDivision = async function enviarDivision() {
             (tokenMeta ? tokenMeta.getAttribute("content") : null);
         const headers = token ? { "X-CSRF-TOKEN": token } : {};
         const res = await fetch(url, { method: "POST", headers, body: fd });
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseError) {
+            const preview = text.substring(0, 200) + (text.length > 200 ? '...' : '');
+            if (typeof window.mostrarErrorConReporte === 'function') {
+                window.mostrarErrorConReporte('El servidor devolvió una respuesta inválida', 'Error de respuesta', `${parseError.message}\n\nRespuesta: ${preview}`);
+            } else if (window.Swal) {
+                window.Swal.fire("Error", parseError.message, "error");
+            }
+            return;
+        }
         if (!res.ok || !data.success)
             throw new Error(data.message || "Error al dividir");
         form.reset();
@@ -1943,20 +2244,43 @@ window.enviarDivision = async function enviarDivision() {
         if (window.Swal) window.Swal.fire("Hecho", data.message, "success");
         else alert(data.message);
     } catch (e) {
-        if (window.Swal)
+        if (typeof window.mostrarErrorConReporte === 'function') {
+            window.mostrarErrorConReporte((e && e.message) || "Error", "Error");
+        } else if (window.Swal) {
             window.Swal.fire("Error", (e && e.message) || "Error", "error");
-        else alert((e && e.message) || "Error");
+        } else {
+            alert((e && e.message) || "Error");
+        }
     }
 }
 
-// Exportar funciones globales necesarias
-window.renderizarGrupoSVG = renderizarGrupoSVG;
+// Función para manejar la acción de ver dimensiones desde el modal
+window.enviarAccionEtiqueta = async function() {
+    const elementoId = document.getElementById('dividir_elemento_id')?.value;
+    const accionRadio = document.querySelector('input[name="accion_etiqueta"]:checked');
+    const accion = accionRadio?.value;
 
-// Wrapper para compatibilidad con la llamada en blade: renderizarSVGEtiqueta(etiquetaId, grupoEtiqueta)
-window.renderizarSVGEtiqueta = function(id, group) {
-    // En canvasMaquina.js: renderizarGrupoSVG(grupo, gidx)
-    // Asumimos que podemos pasar id como índice o ignorarlo
-    return renderizarGrupoSVG(group, id);
-};
+    if (!elementoId) {
+        alert('Falta el ID del elemento.');
+        return;
+    }
 
-})();
+    if (accion === 'ver_dimensiones') {
+        // Cerrar el modal actual
+        document.getElementById('modalDividirElemento')?.classList.add('hidden');
+
+        // Abrir el modal de ver dimensiones
+        if (typeof window.abrirModalVerDimensiones === 'function') {
+            window.abrirModalVerDimensiones(elementoId);
+        } else {
+            alert('La función de ver dimensiones no está disponible');
+        }
+        return;
+    }
+
+    // Para otras acciones, usar el formulario original si existe
+    const form = document.getElementById('formDividirElemento');
+    if (form && typeof form.requestSubmit === 'function') {
+        // Trigger the original form logic
+    }
+}

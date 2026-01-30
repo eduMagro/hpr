@@ -273,11 +273,36 @@ class EtiquetaController extends Controller
             ->appends($request->except('page'));
 
         // 🔥 en lugar de otra query con get(), cargamos solo para la página actual
-        $etiquetasJson = $etiquetas->load([
+        $etiquetas->load([
             'planilla.obra:id,obra',
             'planilla.cliente:id,empresa',
-            'elementos:id,etiqueta_id,dimensiones,barras,diametro,peso',
-        ])->keyBy('id');
+            'elementos:id,etiqueta_sub_id,dimensiones,barras,diametro,peso',
+        ]);
+
+        // Transformar datos al formato que espera renderizarGrupoSVG
+        $etiquetasJson = $etiquetas->keyBy('id')->map(function ($etiqueta) {
+            return [
+                'id' => $etiqueta->id,
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'nombre' => $etiqueta->nombre,
+                'peso_kg' => $etiqueta->peso_kg,
+                'planilla' => $etiqueta->planilla ? [
+                    'codigo_limpio' => $etiqueta->planilla->codigo_limpio,
+                    'seccion' => $etiqueta->planilla->seccion,
+                    'obra' => $etiqueta->planilla->obra ? ['obra' => $etiqueta->planilla->obra->obra] : null,
+                    'cliente' => $etiqueta->planilla->cliente ? ['empresa' => $etiqueta->planilla->cliente->empresa] : null,
+                ] : null,
+                'elementos' => $etiqueta->elementos->map(function ($e) {
+                    return [
+                        'id' => $e->id,
+                        'dimensiones' => $e->dimensiones,
+                        'barras' => $e->barras,
+                        'diametro' => $e->diametro,
+                        'peso' => $e->peso,
+                    ];
+                })->values()->toArray(),
+            ];
+        })->toArray();
 
         $filtrosActivos = $this->filtrosActivos($request);
 
