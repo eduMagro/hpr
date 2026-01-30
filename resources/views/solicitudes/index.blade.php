@@ -1,33 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Funciones - {{ config('app.name') }}</x-slot>
 
-    <style>
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(248, 250, 252, 0.05);
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 10px;
-            border: 2px solid transparent;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
-
-        /* Para Firefox */
-        .custom-scrollbar {
-            scrollbar-width: thin;
-            scrollbar-color: #475569 transparent;
-        }
-    </style>
 
     <div class="px-4 py-6 max-w-[1920px] mx-auto"
         x-data="solicitudesApp(@js($solicitudes), @js($users), @js($estados), @js($prioridades))" x-init="initPage()">
@@ -61,7 +35,7 @@
         </div>
 
         <!-- Notion-like Tabs -->
-        <div class="flex items-center gap-6 mb-4 text-sm pb-1 overflow-x-auto ml-4 custom-scrollbar">
+        <div class="flex items-center gap-6 mb-4 text-sm pb-1 overflow-x-auto ml-4">
             <button @click="boardView = 'table'"
                 :class="boardView === 'table' ? 'text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white font-medium' :
                     'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border-b-2 border-transparent'"
@@ -87,10 +61,9 @@
 
         <!-- Excel-like Table Container -->
         <div x-show="boardView === 'table'"
-            class="h-[calc(100vh-35vh-20px)] overflow-y-auto select-none custom-scrollbar">
-            <div class="overflow-x-auto min-h-[400px] h-full p-1">
-                <table
-                    class="w-full text-sm hpr-solicitudes-table bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow">
+            class="h-[calc(100vh-35vh-20px)] overflow-y-auto select-none rounded-2xl shadow border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div class="min-h-[400px] h-full overflow-x-hidden">
+                <table class="w-full text-sm hpr-solicitudes-table">
                     <colgroup>
                         <col data-column-key="id">
                         <col data-column-key="titulo">
@@ -359,7 +332,7 @@
 
         <!-- Kanban Board View -->
         <div x-show="boardView === 'estado'" class="pb-24" x-cloak>
-            <div class="flex gap-4 overflow-x-auto pb-4 items-start kanban-scrollbar">
+            <div class="flex gap-4 overflow-x-auto pb-4 items-start">
                 <template x-for="est in estados" :key="est">
                     <div
                         class="w-80 shrink-0 rounded-2xl border overflow-hidden border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm flex flex-col group/col">
@@ -459,7 +432,7 @@
                         </div>
 
                         <!-- Content -->
-                        <div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 custom-scrollbar">
+                        <div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
                             <form :action="isEditing ? '/funciones/' + form.id : '{{ route('funciones.store') }}'"
                                 method="POST" id="solicitudForm" class="h-full flex flex-col">
                                 @csrf
@@ -673,51 +646,6 @@
     </div>
 
     <style>
-        /* Estilos para la barra de desplazamiento de Kanban */
-        .kanban-scrollbar::-webkit-scrollbar {
-            height: 8px;
-            width: 8px;
-        }
-
-        .kanban-scrollbar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 10px;
-        }
-
-        html.dark .kanban-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .kanban-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(156, 163, 175, 0.5);
-            border-radius: 10px;
-            border: 2px solid transparent;
-            background-clip: content-box;
-        }
-
-        html.dark .kanban-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(75, 85, 99, 0.5);
-        }
-
-        .kanban-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(107, 114, 128, 0.8);
-            background-clip: content-box;
-        }
-
-        html.dark .kanban-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(156, 163, 175, 0.8);
-        }
-
-        /* Firefox */
-        .kanban-scrollbar {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(156, 163, 175, 0.5) rgba(0, 0, 0, 0.05);
-        }
-
-        html.dark .kanban-scrollbar {
-            scrollbar-color: rgba(75, 85, 99, 0.5) rgba(255, 255, 255, 0.05);
-        }
-
         .resizable-column-wrapper {
             display: flex;
             align-items: center;
@@ -877,42 +805,6 @@
             overflow: auto;
             margin: 0.9rem 0;
             border: 1px solid rgb(30 41 59);
-        }
-
-        /* Custom scrollbar for code blocks - matching Firefox thin style */
-        .markdown-preview pre::-webkit-scrollbar {
-            height: 6px;
-            width: 6px;
-        }
-
-        .markdown-preview pre::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .markdown-preview pre::-webkit-scrollbar-thumb {
-            background: rgb(71 85 105);
-            border-radius: 3px;
-        }
-
-        .markdown-preview pre::-webkit-scrollbar-thumb:hover {
-            background: rgb(100 116 139);
-        }
-
-        .markdown-preview pre::-webkit-scrollbar-corner {
-            background: transparent;
-        }
-
-        /* Hide scrollbar buttons/arrows */
-        .markdown-preview pre::-webkit-scrollbar-button {
-            display: none;
-            height: 0;
-            width: 0;
-        }
-
-        /* Firefox scrollbar */
-        .markdown-preview pre {
-            scrollbar-width: thin;
-            scrollbar-color: rgb(71 85 105) transparent;
         }
 
         .markdown-preview pre code {

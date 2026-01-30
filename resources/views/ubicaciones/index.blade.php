@@ -1428,28 +1428,43 @@ Inesperados: ${inesperados.join(', ') || ''}
 </script>
 
 <x-app-layout>
-    <x-slot name="title">Ubicaciones - {{ config('app.name') }}</x-slot>
-
-    <x-page-header title="Gestión de Ubicaciones" subtitle="Crea, navega y revisa las ubicaciones del almacén"
-        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' />
-
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
     <div x-data="paginaUbicaciones()" class="max-w-7xl mx-auto space-y-4 min-h-[calc(100vh-8rem)] pb-8">
         <div
-            class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
+            class="bg-gradient-to-br from-gray-50 to-gray-100 border dark:from-gray-800 dark:to-gray-800 dark:bg-gray-800 border-gray-300 dark:border-gray-700 sm:rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400">Ubicaciones |
+                        {{ $nombreAlmacen }}
+                    </p>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Ubicaciones</h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Crea, navega y revisa las ubicaciones del
+                        almacén con acceso rápido al inventario.</p>
+                </div>
 
-                <div class="flex justify-between md:flex-col gap-2 items-end h-fit">
+                <div class="grid gap-2 grid-cols-2 items-end h-fit w-full md:w-auto"
+                    :class="$store.inv.modoInventario ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2'">
                     <button @click="toggleAll()"
-                        class="inline-flex items-center justify-center gap-2 px-4 py-2 h-10 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white rounded-lg shadow text-xs md:text-sm font-semibold w-[130px] md:w-[160px]">
+                        class="inline-flex items-center justify-center gap-2 px-4 py-2 h-10 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 dark:from-gray-700 dark:to-gray-600 dark:hover:from-gray-600 dark:hover:to-gray-500 text-white rounded-lg shadow-lg border border-transparent dark:border-gray-600 text-xs md:text-sm font-semibold w-full transition-all">
                         <span
                             x-text="Object.values(openSectors).length && Object.values(openSectors).every(Boolean) ? 'Cerrar todo' : 'Abrir todo'"></span>
                     </button>
 
-                    <div class="flex gap-3 items-center">
-                        <!-- Botón Sincronización en la nube -->
-                        <div class="relative" x-show="$store.inv.modoInventario" x-cloak>
+                    <button @click="$store.inv.toggleModoInventario()"
+                        class="inline-flex items-center gap-2 px-4 py-2 h-10 rounded-lg text-white font-semibold shadow-lg transition-all border border-transparent dark:border-gray-600 text-xs md:text-sm w-full justify-center"
+                        :class="$store.inv.modoInventario ?
+                            'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 dark:from-red-600 dark:to-red-800 dark:hover:from-red-500 dark:hover:to-red-700 dark:border-red-800' :
+                            'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 dark:from-gray-700 dark:to-gray-600 dark:hover:from-gray-600 dark:hover:to-gray-500'">
+                        <span class="text-xs md:text-sm">📦</span>
+                        <span class="text-xs md:text-sm"
+                            x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
+                    </button>
+
+
+                    <!-- Botón Sincronización en la nube -->
+                    <div class="relative  col-span-2 flex justify-center" x-show="$store.inv.modoInventario" x-cloak>
+                        <div class="flex items-center gap-2">
                             <div
                                 class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-full border border-gray-200 dark:border-gray-700">
                                 <button @click="crearBackup()"
@@ -1471,76 +1486,70 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     <span class="text-xs font-bold ml-1" x-text="listaBackups.length"></span>
                                 </button>
                             </div>
-                        </div>
 
-                        <!-- Botón Leyenda (Solo visible en modo inventario) -->
-                        <div x-data="{ showLeyenda: false }" class="relative" x-show="$store.inv.modoInventario"
-                            x-cloak>
-                            <button @click="showLeyenda = !showLeyenda"
-                                class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl shadow transition-all max-md:text-[12px]"
-                                title="Leyenda de colores">
-                                i
-                            </button>
+                            <!-- Botón Leyenda (Solo visible en modo inventario) -->
+                            <div x-data="{ showLeyenda: false }" class="relative">
+                                <button @click="showLeyenda = !showLeyenda"
+                                    class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg shadow transition-all"
+                                    title="Leyenda de colores">
+                                    i
+                                </button>
 
-                            <div x-show="showLeyenda" @click.away="showLeyenda = false"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 translate-y-1"
-                                x-transition:enter-end="opacity-100 translate-y-0"
-                                x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 translate-y-0"
-                                x-transition:leave-end="opacity-0 translate-y-1"
-                                class="absolute left-1/2 -translate-x-1/2 top-full w-64 max-w-[calc(100vw-2rem)] p-4 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 mt-4">
+                                <div x-show="showLeyenda" @click.away="showLeyenda = false"
+                                    x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    x-transition:leave="transition ease-in duration-150"
+                                    x-transition:leave-start="opacity-100 translate-y-0"
+                                    x-transition:leave-end="opacity-0 translate-y-1"
+                                    class="absolute left-1/2 -translate-x-1/2 top-full w-64 max-w-[calc(100vw-2rem)] p-4 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 mt-4">
 
-                                <!-- Flecha del bocadillo -->
-                                <div
-                                    class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-t border-l border-gray-200 dark:border-gray-700 transform rotate-45">
-                                </div>
+                                    <!-- Flecha del bocadillo -->
+                                    <div
+                                        class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-t border-l border-gray-200 dark:border-gray-700 transform rotate-45">
+                                    </div>
 
-                                <h3 class="font-bold text-gray-900 dark:text-white mb-3 text-sm relative z-10">Leyenda
-                                    de
-                                    estados</h3>
+                                    <h3 class="font-bold text-gray-900 dark:text-white mb-3 text-sm relative z-10">
+                                        Leyenda
+                                        de
+                                        estados</h3>
 
-                                <div class="space-y-2 text-xs text-gray-700 dark:text-gray-300 relative z-10">
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-3 w-3 rounded-full bg-green-600"></span> <span>OK</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-3 w-3 rounded-full bg-blue-600"></span> <span>Consumido</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-3 w-3 rounded-full bg-purple-600"></span> <span>Fabricando</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-3 w-3 rounded-full bg-amber-500"></span> <span>Asignado a otra
-                                            ubicación</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-3 w-3 rounded-full bg-red-600"></span> <span>Sin ubicación</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-3 w-3 rounded-full bg-gray-500"></span> <span>Pendiente</span>
+                                    <div class="space-y-2 text-xs text-gray-700 dark:text-gray-300 relative z-10">
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-3 w-3 rounded-full bg-green-600"></span> <span>OK</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-3 w-3 rounded-full bg-blue-600"></span>
+                                            <span>Consumido</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-3 w-3 rounded-full bg-purple-600"></span>
+                                            <span>Fabricando</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-3 w-3 rounded-full bg-amber-500"></span> <span>Asignado a
+                                                otra
+                                                ubicación</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-3 w-3 rounded-full bg-red-600"></span> <span>Sin
+                                                ubicación</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-3 w-3 rounded-full bg-gray-500"></span>
+                                            <span>Pendiente</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <button @click="$store.inv.toggleModoInventario()"
-                        class="inline-flex items-center gap-2 px-4 py-2 h-10 rounded-lg text-white font-semibold shadow transition-all text-xs md:text-sm w-[160px] justify-center"
-                        :class="$store.inv.modoInventario ?
-                            'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
-                            'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
-                        <span class="text-xs md:text-sm">📦</span>
-                        <span class="text-xs md:text-sm"
-                            x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
-                    </button>
-
                 </div>
             </div>
         </div>
 
         <div x-show="$store.inv && $store.inv.modoInventario" x-cloak
-            class="border border-red-200 dark:border-red-700 rounded-xl shadow-sm bg-white dark:bg-gray-900 hover:border-red-400 hover:shadow-md transition">
+            class="border border-red-200 dark:border-red-900/50 sm:rounded-xl shadow-sm bg-white dark:bg-gray-800 hover:border-red-400 hover:shadow-md transition">
             <button @click="borrarTodosEscaneos()"
                 class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                 <div class="flex items-center gap-3">
@@ -1566,7 +1575,7 @@ Inesperados: ${inesperados.join(', ') || ''}
         <div class="space-y-2 md:space-y-4">
             @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
                 <div x-init="if (openSectors['{{ $sector }}'] === undefined) openSectors['{{ $sector }}'] = false"
-                    class="border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+                    class="border border-gray-200 dark:border-gray-700 sm:rounded-2xl shadow-md bg-white dark:bg-gray-800 overflow-hidden">
                     <button @click="openSectors['{{ $sector }}'] = !openSectors['{{ $sector }}']"
                         class="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white text-sm sm:text-base">
                         @php
@@ -1579,20 +1588,13 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <span
                                 class="inline-flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full text-white font-bold text-sm sm:text-base"
                                 :class="!($store.inv && $store.inv.modoInventario) ? 'bg-gray-600' : (
-                                        estadoSectores['{{ $sector }}'] === 'ok' ? 'bg-green-600' :
-                                        estadoSectores['{{ $sector }}'] === 'fabricando' ? 'bg-purple-600' :
-                                        estadoSectores['{{ $sector }}'] === 'consumido' ? 'bg-blue-600' :
-                                        estadoSectores['{{ $sector }}'] === 'ambar' ? 'bg-amber-500' :
-                                        estadoSectores['{{ $sector }}'] === 'rojo' ? 'bg-red-600' :
-                                        'bg-gray-600'
-                                    )">S{{ $sector }}</span>
-                            estadoSectores['{{ $sector }}'] === 'ok' ? 'bg-green-600' :
-                            estadoSectores['{{ $sector }}'] === 'fabricando' ? 'bg-purple-600' :
-                            estadoSectores['{{ $sector }}'] === 'consumido' ? 'bg-blue-600' :
-                            estadoSectores['{{ $sector }}'] === 'ambar' ? 'bg-amber-500' :
-                            estadoSectores['{{ $sector }}'] === 'rojo' ? 'bg-red-600' :
-                            'bg-gray-600'
-                            )">S{{ $sector }}</span>
+                                                                                                                                                                estadoSectores['{{ $sector }}'] === 'ok' ? 'bg-green-600' :
+                                                                                                                                                                estadoSectores['{{ $sector }}'] === 'fabricando' ? 'bg-purple-600' :
+                                                                                                                                                                estadoSectores['{{ $sector }}'] === 'consumido' ? 'bg-blue-600' :
+                                                                                                                                                                estadoSectores['{{ $sector }}'] === 'ambar' ? 'bg-amber-500' :
+                                                                                                                                                                estadoSectores['{{ $sector }}'] === 'rojo' ? 'bg-red-600' :
+                                                                                                                                                                'bg-gray-600'
+                                                                                                                                                            )">S{{ $sector }}</span>
                             <div class="flex flex-col gap-1 items-start">
                                 <p class="text-base sm:text-lg font-semibold leading-tight">Sector {{ $sector }}
                                 </p>
@@ -1774,7 +1776,7 @@ Inesperados: ${inesperados.join(', ') || ''}
         {{-- Botones de acción --}}
         <div class="flex max-md:flex-col gap-3">
             <div
-                class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
+                class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700/70 sm:rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
                 <button @click="openModal = true"
                     class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                     <div class="flex items-center gap-3">
@@ -1791,7 +1793,7 @@ Inesperados: ${inesperados.join(', ') || ''}
             </div>
 
             <div x-show="$store.inv && $store.inv.modoInventario" x-cloak
-                class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-orange-200 dark:border-orange-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-orange-500 hover:shadow-md transition">
+                class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-orange-200 dark:border-orange-700/70 sm:rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-orange-500 hover:shadow-md transition">
                 <button @click="abrirConsumos()" class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                     <div class="flex items-center gap-3">
                         <span
