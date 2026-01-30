@@ -1024,8 +1024,11 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
         const contenedor = document.getElementById("contenedor-svg-" + groupId);
         if (!contenedor) return;
 
-        const ancho = 600,
-            alto = 150;
+        // Usar dimensiones reales del contenedor
+        const rect = contenedor.getBoundingClientRect();
+        const ancho = rect.width > 0 ? rect.width : 600;
+        const alto = rect.height > 0 ? rect.height : 150;
+        console.log('📐 SVG container:', groupId, 'dims:', ancho, 'x', alto);
         const svgBg = getEstadoColorFromCSSVar(contenedor);
         const svg = crearSVG(ancho, alto, svgBg);
 
@@ -2048,7 +2051,7 @@ document.addEventListener("livewire:navigated", initCanvasMaquina);
 // =======================
 // Modal dividir elemento
 // =======================
-window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId, barras) {
+window.abrirModalDividirElemento = async function abrirModalDividirElemento(elementoId, barras) {
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
     const inputBarrasTotales = document.getElementById("dividir_barras_totales");
@@ -2065,37 +2068,57 @@ window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId
 
     input.value = elementoId;
 
-    // Buscar elemento en elementosAgrupadosScript o gruposResumenData
+    // Mostrar loading en el label de barras
+    if (labelBarras) labelBarras.textContent = '...';
+
+    // PRIMERO: Obtener datos frescos del servidor via AJAX
     let elementoData = null;
     let barrasTotales = parseInt(barras) || 0;
 
-    // Buscar en elementosAgrupadosScript
-    if (window.elementosAgrupadosScript) {
-        for (const grupo of window.elementosAgrupadosScript) {
-            if (grupo.elementos) {
-                const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
-                if (elem) {
-                    elementoData = elem;
-                    if (elem.barras) {
-                        barrasTotales = parseInt(elem.barras) || 0;
+    try {
+        const response = await fetch(`/elementos/${elementoId}/info-basica`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.elemento) {
+                elementoData = data.elemento;
+                barrasTotales = parseInt(data.elemento.barras) || 0;
+                console.log('📊 Datos frescos del servidor:', data.elemento);
+            }
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudieron obtener datos frescos, usando datos locales:', error);
+    }
+
+    // FALLBACK: Si no se obtuvo del servidor, buscar en datos locales
+    if (!elementoData) {
+        // Buscar en elementosAgrupadosScript
+        if (window.elementosAgrupadosScript) {
+            for (const grupo of window.elementosAgrupadosScript) {
+                if (grupo.elementos) {
+                    const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
+                    if (elem) {
+                        elementoData = elem;
+                        if (elem.barras) {
+                            barrasTotales = parseInt(elem.barras) || 0;
+                        }
+                        break;
                     }
-                    break;
                 }
             }
         }
-    }
 
-    // Si no se encontró, buscar en gruposResumenData
-    if (!elementoData && window.gruposResumenData) {
-        for (const grupo of window.gruposResumenData) {
-            if (grupo.elementos) {
-                const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
-                if (elem) {
-                    elementoData = elem;
-                    if (elem.barras) {
-                        barrasTotales = parseInt(elem.barras) || 0;
+        // Si no se encontró, buscar en gruposResumenData
+        if (!elementoData && window.gruposResumenData) {
+            for (const grupo of window.gruposResumenData) {
+                if (grupo.elementos) {
+                    const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
+                    if (elem) {
+                        elementoData = elem;
+                        if (elem.barras) {
+                            barrasTotales = parseInt(elem.barras) || 0;
+                        }
+                        break;
                     }
-                    break;
                 }
             }
         }

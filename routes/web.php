@@ -572,6 +572,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/subetiquetas/mover-todo', [ElementoController::class, 'moverTodoANuevaSubEtiqueta'])->name('subetiquetas.moverTodo');
     Route::get('/elementos/{elementoId}/maquinas-disponibles', [ElementoController::class, 'maquinasDisponibles'])->name('elementos.maquinas-disponibles');
     Route::post('/elementos/{elementoId}/cambiar-maquina', [ElementoController::class, 'cambiarMaquinaDirecto'])->name('elementos.cambiar-maquina');
+    Route::get('/elementos/{elementoId}/info-basica', [ElementoController::class, 'infoBasica'])->name('elementos.info-basica');
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])->name('elementosEtiquetas');
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*')->name('etiquetas.actualizarMaquina');
     Route::post('/etiquetas/fabricacion-optimizada', [EtiquetaController::class, 'fabricacionSyntaxLine28'])->name('etiquetas.fabricacion-optimizada');

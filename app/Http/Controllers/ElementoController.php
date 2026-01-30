@@ -1270,6 +1270,37 @@ class ElementoController extends Controller
     }
 
     /**
+     * Devuelve información básica actualizada del elemento (para el modal de dividir)
+     * GET /elementos/{id}/info-basica
+     */
+    public function infoBasica($elementoId)
+    {
+        try {
+            $elemento = Elemento::with('etiquetaRelacion')->findOrFail($elementoId);
+
+            return response()->json([
+                'success' => true,
+                'elemento' => [
+                    'id' => $elemento->id,
+                    'barras' => (int) ($elemento->barras ?? 0),
+                    'peso' => $elemento->peso,
+                    'peso_numerico' => (float) ($elemento->peso ?? 0),
+                    'diametro' => $elemento->diametro,
+                    'longitud' => $elemento->longitud,
+                    'estado' => $elemento->etiquetaRelacion?->estado ?? null,
+                    'paquete_id' => $elemento->etiquetaRelacion?->paquete_id ?? null,
+                    'etiqueta_sub_id' => $elemento->etiquetaRelacion?->etiqueta_sub_id ?? null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró el elemento',
+            ], 404);
+        }
+    }
+
+    /**
      * Obtiene las máquinas disponibles para un elemento según su diámetro.
      * GET /api/elementos/{id}/maquinas-disponibles
      */
