@@ -5,10 +5,7 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-300 leading-tight">
                 <strong>{{ $maquina->nombre }}</strong>,
-                {{ $usuario1->name }}
-                @if ($usuario2)
-                    y {{ $usuario2->name }}
-                @endif
+                {{ Auth::user()->name }}
             </h2>
 
             <div class="flex items-center gap-3">

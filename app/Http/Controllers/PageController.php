@@ -29,10 +29,6 @@ class PageController extends Controller
             'departamentos' => $s->departamentos->pluck('id')->toArray(),
         ]);
 
-        if ($items->isEmpty()) {
-            session()->flash('error', 'No tienes acceso a ninguna sección. Contacta con administración.');
-        }
-
         return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
     }
 

@@ -5,21 +5,10 @@
 export function initGridClasses() {
     // Esperar a que Alpine esté listo
     document.addEventListener("alpine:init", () => {
-        // console.log('🎯 Inicializando control de clases del grid');
-
         // Función para actualizar clases
         window.updateGridClasses = function (showLeft, showRight) {
             const grid = document.getElementById("grid-maquina");
-            if (!grid) {
-                // console.error('❌ No se encontró #grid-maquina');
-                return;
-            }
-
-            console.log("🔧 Actualizando clases:", {
-                showLeft,
-                showRight,
-                clasesAnteriores: grid.className,
-            });
+            if (!grid) return;
 
             // Aplicar clase si al menos una columna está visible
             if (showLeft || showRight) {
@@ -35,20 +24,15 @@ export function initGridClasses() {
                 grid.classList.remove("ambas-columnas");
             }
 
-            console.log("✅ Clases actualizadas:", grid.className);
-
             // FORZAR REPAINT del navegador de forma más suave
-            // Solo forzar reflow sin ocultar el grid
-            void grid.offsetHeight; // Trigger reflow
+            void grid.offsetHeight;
 
             // Forzar recalcular estilos en todas las etiquetas
             const etiquetas = grid.querySelectorAll(".etiqueta-card");
             etiquetas.forEach((etiqueta) => {
                 void etiqueta.offsetHeight;
             });
-
-            console.log("🎨 Repaint forzado (optimizado)");
-        }; // <- CIERRE CORRECTO de updateGridClasses
+        };
 
         // Escuchar eventos personalizados
         window.addEventListener("toggleLeft", () => {
@@ -78,11 +62,9 @@ export function initGridClasses() {
         function applyInitialClasses() {
             const grid = document.getElementById("grid-maquina");
             if (!grid) {
-                console.log("⏳ Grid no encontrado, reintentando...");
                 const observer = new MutationObserver((mutations, obs) => {
                     const grid = document.getElementById("grid-maquina");
                     if (grid) {
-                        console.log("✅ Grid detectado por MutationObserver");
                         obs.disconnect();
                         const showLeft = JSON.parse(
                             localStorage.getItem("showLeft") ?? "true"
@@ -107,12 +89,11 @@ export function initGridClasses() {
                 localStorage.getItem("showRight") ?? "true"
             );
             window.updateGridClasses(showLeft, showRight);
-            console.log("✅ Clases iniciales aplicadas inmediatamente");
         }
 
         applyInitialClasses();
-    }); // <- CIERRA alpine:init
-} // <- CIERRA initGridClasses
+    });
+}
 
 // Auto-inicializar cuando el DOM esté listo o tras navegación Livewire
 if (document.readyState === "loading") {

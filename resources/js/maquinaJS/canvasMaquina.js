@@ -139,7 +139,7 @@ const LEGEND_PAD_X = 0;
 const LEGEND_PAD_Y = -25; // Más negativo = leyenda más abajo (cerca del borde inferior)
 
 // ——— Offset para bajar la figura dentro del SVG ———
-const FIGURE_OFFSET_Y = 20; // Positivo = figura más abajo
+const FIGURE_OFFSET_Y = 40; // Positivo = figura más abajo
 
 /** Dibuja la leyenda SIEMPRE abajo-izquierda del SVG */
 function drawLegendBottomLeft(svg, entries, width, height) {

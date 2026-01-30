@@ -1,13 +1,3 @@
-<!-- DEBUG: Verificar sesión -->
-<script>
-    console.log('🔍 Session check:', {
-        error: @json(session('error')),
-        success: @json(session('success')),
-        warning: @json(session('warning')),
-        info: @json(session('info'))
-    });
-</script>
-
 @php
     // Parsear información del dispositivo usando Jenssegers\Agent
     $agent = new \Jenssegers\Agent\Agent();
@@ -268,8 +258,6 @@ Dispositivo: ${infoDispositivo}`;
     function initAlertsPage() {
         // Prevenir doble inicialización
         if (document.body.dataset.alertsPageInit === 'true') return;
-
-        console.log('🔍 Inicializando sistema de alertas...');
 
         // Procesar errores de validación
         @if ($errors->any())

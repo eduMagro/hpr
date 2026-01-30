@@ -273,11 +273,19 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
         const svg = contenedor.querySelector('svg');
         const figuraImg = await convertirSVGaImagen(svg);
 
-        // Extraer textos del contenedor original
+        // Extraer textos del contenedor original (sin el estado-badge)
         const h2El = contenedor.querySelector('h2');
         const h3El = contenedor.querySelector('h3');
         const h2Text = h2El ? h2El.textContent : '';
-        const h3Text = h3El ? h3El.textContent : '';
+
+        // Clonar h3 y quitar el estado-badge antes de extraer texto
+        let h3Text = '';
+        if (h3El) {
+            const h3Clone = h3El.cloneNode(true);
+            const estadoBadge = h3Clone.querySelector('.estado-badge');
+            if (estadoBadge) estadoBadge.remove();
+            h3Text = h3Clone.textContent.trim();
+        }
 
         // Generar QR
         const qrSize = modo === 'a4' ? 50 : 60;

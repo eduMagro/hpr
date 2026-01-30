@@ -25,11 +25,11 @@ class VerificarPermisoAsistente
             ], 401);
         }
 
-        // Verificar que tenga permiso para usar el asistente
-        if (!$user->puede_usar_asistente) {
+        // Por ahora, solo administradores pueden usar el asistente
+        if ($user->rol !== 'admin') {
             return response()->json([
                 'success' => false,
-                'error' => 'No tienes permisos para usar el asistente virtual. Contacta con un administrador.'
+                'error' => 'El asistente virtual solo está disponible para administradores.'
             ], 403);
         }
 
