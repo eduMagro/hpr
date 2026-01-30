@@ -5195,9 +5195,6 @@
                         });
 
                         if (eventos.length === 0) {
-                            console.log(
-                                `⚠️ No se encontraron eventos para planilla ${upd.planilla_id} en máquina ${upd.maquina_id}`
-                            );
                             return;
                         }
 
