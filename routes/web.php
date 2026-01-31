@@ -389,6 +389,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/localizaciones-paquetes/{codigo}', [PaqueteController::class, 'update'])->name('localizaciones_paquetes.update');
     Route::post('/localizaciones/store-paquete', [LocalizacionController::class, 'storePaquete'])->name('localizaciones.storePaquete');
+    Route::post('/localizaciones/paquete', [LocalizacionController::class, 'guardarLocalizacionPaquete'])->name('localizaciones.guardarPaquete');
+    Route::put('/localizaciones/paquete/{paqueteId}', [LocalizacionController::class, 'updatePaquetePosicion'])->name('localizaciones.updatePaquetePosicion');
     Route::get('/api/mapa-nave/{naveId}', [LocalizacionController::class, 'obtenerDatosMapaNave'])->name('api.mapaNave');
     Route::get('/api/localizaciones-index/{naveId}', [LocalizacionController::class, 'getDatosLocalizacionesIndex'])->name('api.localizacionesIndex');
     Route::get('/api/localizaciones-editor/{naveId}', [LocalizacionController::class, 'getDatosEditorMapa'])->name('api.localizacionesEditor');
@@ -961,38 +963,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/api/fabricacion/meses-disponibles', [App\Http\Controllers\FabricacionLogController::class, 'getMesesDisponibles'])
         ->name('api.fabricacion.meses');
 
-    // Vista para editar el mapa
-    Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])
-        ->name('localizaciones.editarMapa');
-
-    // Vista para crear nueva localización
-    Route::get('/localizaciones/create', [LocalizacionController::class, 'create'])
-        ->name('localizaciones.create');
-
-    // API: Verificar si existe localización en coordenadas
-    Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])
-        ->name('localizaciones.verificar');
-
-    // API: Guardar nueva localización
-    Route::post('/localizaciones', [LocalizacionController::class, 'store'])
-        ->name('localizaciones.store');
-
-    // API: Guardar localización de paquete (NUEVA)
-    Route::post('/localizaciones/paquete', [LocalizacionController::class, 'guardarLocalizacionPaquete'])
-        ->name('localizaciones.guardarPaquete');
-
-    // API: Obtener detalles de una localización específica
-    Route::get('/localizaciones/{id}', [LocalizacionController::class, 'show'])
-        ->name('localizaciones.show');
-
-    // API: Actualizar localización existente
-    Route::put('/localizaciones/{id}', [LocalizacionController::class, 'update'])
-        ->name('localizaciones.update');
-
-    // API: Actualizar posición de paquete en el mapa
-    Route::put('/localizaciones/paquete/{paqueteId}', [LocalizacionController::class, 'updatePaquetePosicion'])
-        ->name('localizaciones.updatePaquetePosicion');
-
     // API: Obtener lista de naves (obras HPR)
     Route::get('/api/naves', [LocalizacionController::class, 'getNavesApi'])
         ->name('api.naves.index');
@@ -1004,10 +974,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // API: Renderizar componente de mapa (HTML)
     Route::get('/api/naves/{naveId}/mapa-component', [LocalizacionController::class, 'renderMapaComponente'])
         ->name('api.naves.mapaComponent');
-
-    // API: Eliminar localización
-    Route::delete('/localizaciones/{id}', [LocalizacionController::class, 'destroy'])
-        ->name('localizaciones.destroy');
 
 
     Route::post('/paquetes/desde-maquina', [PaqueteController::class, 'store'])
